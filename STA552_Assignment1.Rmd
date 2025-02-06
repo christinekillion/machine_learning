@@ -419,6 +419,30 @@ interactive_plot
 
 The grade features for each semester contain both missing values and values of zero. When grades of zero are excluded, the grade distributions are approximately normally distributed. Data imputation could replace the missing values, or another binary feature can be created to retain the information of students with a grade of zero for each semester.
 
+```{r grade-histograms}
+
+# Remove grades of zero
+first_semester_grades <- data$Grade1[data$Grade1 != 0]
+second_semester_grades <- data$Grade2[data$Grade2 != 0]
+
+# Plot for first semester
+gradeplot1 <- ggplot(data.frame(grade = first_semester_grades), aes(x = grade)) +
+  geom_histogram(aes(y = ..density..), bins = 10, fill = "#ac1f67", color = "black", alpha = 0.7) +
+  stat_function(fun = dnorm, args = list(mean = mean(first_semester_grades), sd = sd(first_semester_grades)), color = "red", size = 1) +
+  labs(title = "First Semester Grades", x = "Grades", y = "Density") +
+  theme_minimal()
+
+# Plot for second semester
+gradeplot2 <- ggplot(data.frame(grade = second_semester_grades), aes(x = grade)) +
+  geom_histogram(aes(y = ..density..), bins = 10, fill = "#ac1f67", color = "black", alpha = 0.7) +
+  stat_function(fun = dnorm, args = list(mean = mean(second_semester_grades), sd = sd(second_semester_grades)), color = "blue", size = 1) +
+  labs(title = "Second Semester Grades", x = "Grades", y = "Density") +
+  theme_minimal()
+
+# Arrange the two plots side by side
+grid.arrange(gradeplot1, gradeplot2, ncol = 2)
+```
+
 #  Relationship Between Features
 
 This section examines the relationships between key categorical and numerical features in the dataset. 
