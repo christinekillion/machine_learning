@@ -1,0 +1,556 @@
+---
+title: "Examining Relationships Between Socioeconomic Factors and Academic Performance to Improve Predictive Models of Student Success"
+author: "Christine Killion"
+date: "February 4, 2025"
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: no
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 22px;
+  font-weight: bold;
+  color: #ac1f67;
+  text-align: center;
+  font-family: sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: strong;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 12px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: normal;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: sans-serif;
+    color: black;
+    text-align: center;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("palmerpenguins")) {
+   install.packages("palmerpenguins")
+library(palmerpenguins)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("naniar")) {
+   install.packages("naniar")
+library(naniar)
+}
+if (!require("pool")) {
+   install.packages("pool")
+library(pool)
+}
+if (!require("DBI")) {
+   install.packages("DBI")
+library(DBI)
+}
+if (!require("RMySQL")) {
+   install.packages("RMySQL")
+library(RMySQL)
+}
+if (!require("randomForest")) {
+   install.packages("randomForest")
+library(randomForest)
+}
+if (!require("ggiraph")) {
+   install.packages("ggiraph")
+library(ggiraph)
+}
+if (!require("highcharter")) {
+   install.packages("highcharter")
+library(highcharter)
+}
+if (!require("broom")) {
+   install.packages("broom")
+library(broom)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("ggplot2")) {
+   install.packages("ggplot2")
+library(ggplot2)
+}
+if (!require("dplyr")) {
+   install.packages("dplyr")
+library(dplyr)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("gridExtra")) {
+   install.packages("gridExtra")
+library(gridExtra)
+}
+if (!require("tidyr")) {
+   install.packages("tidyr")
+library(tidyr)
+}
+
+
+## 
+knitr::opts_chunk$set(echo = TRUE,   # include code chunk in the output file
+                      warning = FALSE,# sometimes, you code may produce warning messages,
+                                      # you can choose to include the warning messages in
+                                      # the output file. 
+                      results = TRUE, # you can also decide whether to include the output
+                                      # in the output file.
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+#  Introduction
+
+##  Using This Dataset 
+
+The purpose of using this data set is to build models that predict student academic success. However, a significant challenge associated with this endeavor is the strong class imbalance in the data, as described by the authors in "Early Prediction of student’s Performance in Higher Education: A Case Study." The goal of this report is to use exploratory data analysis to examine the features closely correlated with student academic performance, as measured by first- and second-semester grade average. Understanding these relationships may help inform the development of machine learning models that more accurately predict academic success while mitigating bias. 
+
+##  Description of Data 
+
+This dataset contains features provided by a higher education institution in Portugal and collected from various disjoint databases about students at the time of their enrollment in an undergraduate degree program. The purpose of the dataset is to predict student dropout and academic success. The features relate to student demographics, socio-economic indicators, degree program, and academic performance at the end of the first and second semesters. The collected data previously underwent cleaning. 
+
+##  List of Features
+
+The dataset contains 4,424 observations and 34 feature variables. 
+
+- **Marital Status** (categorical): 6 categories include single, married, widower, divorced, de facto union, or legally separated; 88.6% of students are categorized as single.
+- **Application mode** (categorical): 18 categories include information related to the student's application classifiers, such as international student, special contingent, special age category, and transfer student.
+- **Application order** (categorical): 8 categories of preferred application order between first choice and last choice.
+- **Course** (categorical): 17 categories for chosen course of study.
+- **Daytime/evening attendance** (binary): Whether a student attends during the day or in the evening; 89.08% attend during the day. 
+- **Previous Qualification** (categorical): 17 categories of highest education level, from secondary education to master's degree; 84.02% of students completed their secondary education (12th year of schooling or equivalent).
+- **Nationality** (categorical): 21 nationalities represented, 97.5% Portuguese and the remaining international students. 
+- **Mother's Qualification** and **Father's Qualification** (categorical): 29 and 34 categories of highest education level, respectively. 
+- **Mother's Occupation** and **Father's Occupation** (categorical): 32 and 46 categories of occupation, respectively. 
+- **Displaced** (binary): Whether or not a student is displaced; 54.84% of students are displaced. 
+- **Educational special needs** (binary): 1.15% of students reported educational special needs.
+- **Debtor** (binary): Whether or not a student has debt; 11.37% of students have debt.
+- **Tuition fees up to date** (binary): Whether or not a student's tuition fees are up to date; 11.93% are not up-to-date on their payments. 
+- **Gender** (binary): 64.83% of students are female 
+- **Scholarship holder** (binary): 24.84% of students hold a scholarship. 
+- **Age at enrollment** (integer): Age of the student when they are enrolled; 64.94% are 21 years old or younger. 
+- **International student** (binary): International students (i.e., not from Portugal) account for 2.49% of the sample. 
+- **Curricular Units 1st Semester** and **Curricular Units 2nd Semester** (integers): Number of curricular units **Credited**, **Enrolled**, and **Approved** for each semester. **Evaluations** encompasses the number of evaluations to curricular units in each semester, and **Without Evaluations** is the number of curricular units without evaluations in each semester. **Grade** is the average grade between 0 and 20 per semester.
+- Economic variables (continuous): This dataset includes continuous variables related to the **Unemployment Rate**, **Inflation Rate**, and **GDP**. 
+
+```{r data}
+data <- read.csv("https://christinekillion.github.io/machine_learning/student-success.csv")
+
+# Remove the last feature ("Target" does not include any values)
+data <- data[, -ncol(data)]
+
+# Create random observation ID and replace 8% of the corresponding observations with missing values 
+grades1.missing.id <- sample(1:4424, 353, replace = FALSE)
+grades2.missing.id <- sample(1:4424, 354, replace = FALSE) 
+data$Curricular.units.1st.sem..grade.[grades1.missing.id] <- NA
+data$Curricular.units.2nd.sem..grade.[grades2.missing.id] <- NA
+
+#Total the number of missing values per column.
+missing_per_column <- colSums(is.na(data))
+
+#Total the number of missing values in the dataset. 
+total_missing <- sum(is.na(data))
+
+# Original column names
+colnames(data) <- c(
+  "Marital.status", "Application.mode", "Application.order", "Course", 
+  "Daytime.evening.attendance", "Previous.qualification", "Nacionality", 
+  "Mother.s.qualification", "Father.s.qualification", "Mother.s.occupation", 
+  "Father.s.occupation", "Displaced", "Educational.special.needs", "Debtor", 
+  "Tuition.fees.up.to.date", "Gender", "Scholarship.holder", "Age.at.enrollment", 
+  "International", "Curricular.units.1st.sem..credited.", "Curricular.units.1st.sem..enrolled.",
+  "Curricular.units.1st.sem..evaluations.", "Curricular.units.1st.sem..approved.", 
+  "Curricular.units.1st.sem..grade.", "Curricular.units.1st.sem..without.evaluations.", 
+  "Curricular.units.2nd.sem..credited.", "Curricular.units.2nd.sem..enrolled.", 
+  "Curricular.units.2nd.sem..evaluations.", "Curricular.units.2nd.sem..approved.", 
+  "Curricular.units.2nd.sem..grade.", "Curricular.units.2nd.sem..without.evaluations.", 
+  "Unemployment.rate", "Inflation.rate", "GDP"
+)
+
+# Function to clean and reformat column names
+clean_column_names <- function(names) {
+  # Replace ".s." with "'s " (special case for possessive)
+  names <- gsub("\\.s\\.", "'s ", names)
+  
+  # Replace other periods with spaces
+  names <- gsub("\\.", " ", names)
+  
+  # Convert to title case (capitalize first letter of each word)
+  names <- tools::toTitleCase(names)
+  
+  # Change "Nacionality" to "Nationality"
+  names[names == "Nacionality"] <- "Nationality"
+  
+  # Keep "GDP" in all caps
+  names[names == "Gdp"] <- "GDP"
+  
+  # Replace "Sem " with "Semester"
+  names <- gsub("Sem ", "Semester", names, fixed = TRUE)
+  
+  return(names)
+}
+
+# Apply the function to the column names of the dataframe
+colnames(data) <- clean_column_names(colnames(data))
+
+# Change the column names for 1st and 2nd semester Grades 
+colnames(data)[c(24, 30)] <- c("Grade1", "Grade2")
+```
+
+#  Distribution of Individual Features 
+
+This section will describe the univariate distributions of the key categorical, dichotomous, and continuous features in the dataset and analyze any potential issues for machine learning applications. 
+
+## Student Groups of Interest 
+
+There are three key groups that are underrepresented within this dataset and should be carefully considered in the development of machine learning models so as not to reproduce bias. Section 3 of this report explores in more detail the relationship between these groups and academic achievement in the dataset. 
+
+```{r}
+# Recode binary values from numbers to categories 
+data$Debtor <- recode(data$Debtor, `1` = "Debt", `0` = "No Debt")
+data$`Tuition Fees Up to Date` <- recode(data$`Tuition Fees Up to Date`, `1` = "Paid", `0` = "Unpaid")
+data$Gender <- recode(data$Gender, `1` = "Male", `0` = "Female")
+
+# Count the number of occurrences for each category
+debtor_counts <- table(data$Debtor)
+tuition_counts <- table(data$`Tuition Fees Up to Date`)
+gender_counts <- table(data$Gender)
+
+# Create data frames from the counts for each category
+debtor_df <- as.data.frame(debtor_counts)
+tuition_df <- as.data.frame(tuition_counts)
+gender_df <- as.data.frame(gender_counts)
+
+# Create the pie charts with ggplot2
+
+# Debtor Pie Chart
+pie_debtor <- ggplot(debtor_df, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") +  # Convert bar chart to pie chart
+  scale_fill_manual(values = c("#4C57B8", "#AFB1F0")) +
+  theme_void() +  # Remove background and axes
+  guides(fill = guide_legend(title = NULL)) +  # Add legend and remove title
+  ggtitle("Debtor Status")  # Remove individual title
+
+# Tuition Fees Pie Chart
+pie_tuition <- ggplot(tuition_df, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") +  # Convert bar chart to pie chart
+  scale_fill_manual(values = c("#F5A1B5", "#ac1f67")) +
+  theme_void() +  # Remove background and axes
+  guides(fill = guide_legend(title = NULL)) +  # Add legend and remove title
+  ggtitle("Tuition Fees")  # Remove individual title
+
+# Gender Pie Chart
+pie_gender <- ggplot(gender_df, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") +  # Convert bar chart to pie chart
+  scale_fill_manual(values = c("#E6DE3C", "#B9A520")) +
+  theme_void() +  # Remove background and axes
+  guides(fill = guide_legend(title = NULL)) +  # Add legend and remove title
+  ggtitle("Gender")  
+
+# Combine the pie charts into a grid with a centered main title
+grid.arrange(
+  pie_debtor, pie_tuition, pie_gender, 
+  ncol = 3, 
+  heights = unit(c(1, 0.1), "npc")  # Allocate space for the legends
+)
+```
+
+## Parental Education
+
+This dataset contains the previous academic qualifications of the student, mother, and father. For students, 84.02% have completed secondary education. The parental qualification distributions do not reflect that of the students: There is a wider range of educational categories for each of the parent groups (likely due to the disparate sources of data). When recoded and grouped into three main categories (secondary education, higher education, and other), the distribution of parent qualifications in the dataset indicates that most of the parent qualifications fall into the "other" category. More recoding is required to classify qualifications in order to examine the relationship between parent qualification and student grades. 
+
+```{r qualifications}
+# Create a dataframe with 4 rows and 34 columns. First column is Var1, 1:34
+qual <- data.frame(matrix(1:34, nrow = 34, ncol = 1))
+colnames(qual) <- c("Var1")
+
+# Calculate the count of each category
+S_qual <- data.frame(table(data$`Previous Qualification`))
+M_qual <- data.frame(table(data$`Mother's Qualification`))
+F_qual <- data.frame(table(data$`Father's Qualification`))
+
+# Merge by the common column "Var1"
+qual <- merge(qual, S_qual, by = "Var1", all=TRUE)
+qual <- merge(qual, M_qual, by = "Var1", all=TRUE)
+qual <- merge(qual, F_qual, by = "Var1", all=TRUE)
+
+colnames(qual) <- c("Qualification", "Student", "Mother", "Father")
+
+# Replace NAs with 0
+qual[is.na(qual)] <- 0
+```
+
+```{r qualifications_parents}
+
+# Pivot the data to long format
+qual_long <- qual %>%
+  pivot_longer(cols = c(Student, Mother, Father), 
+               names_to = "Role", 
+               values_to = "Count")
+
+# Filter for only Mother and Father roles
+qual_long <- qual_long %>%
+  filter(Role %in% c("Mother", "Father"))
+
+# Group and rename the 'Qualification' categories
+qual_long <- qual_long %>%
+  mutate(Qualification = case_when(
+    Qualification == 1 ~ "Secondary Education",
+    Qualification >= 2 & Qualification <= 6 ~ "Higher Education Degree",
+    Qualification >= 7 & Qualification <= 34 ~ "Other",
+    TRUE ~ as.character(Qualification)  # In case there are any NA or unrecognized values
+  ))
+
+# Aggregate the data by Qualification and Role to get total count
+qual_long_aggregated <- qual_long %>%
+  group_by(Qualification, Role) %>%
+  summarise(TotalCount = sum(Count), .groups = 'drop')
+
+# Create the ggplot object for stacked bar plot
+p <- ggplot(qual_long_aggregated, aes(x = Qualification, y = TotalCount, fill = Role, text = paste("Total Count: ", TotalCount))) +
+  geom_bar(stat = "identity") +  # Use stat="identity" to use the actual counts
+  labs(x = "Qualification", y = "Count", fill = "Role") +
+  ggtitle("Distribution of Parent Qualifications (Grouped by Education Level)") +  # Add title here
+scale_fill_manual(values = c("Mother" = "#FFC20A", "Father" = "#0C7BDC")) +  # Set custom colors
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Convert the ggplot object to a plotly object for interactivity
+interactive_plot <- ggplotly(p, tooltip = "text")
+
+# Show the interactive plot
+interactive_plot
+```
+
+
+##  Grade Distribution 
+
+The grade features for each semester contain both missing values and values of zero. When grades of zero are excluded, the grade distributions are approximately normally distributed. Data imputation could replace the missing values, or another binary feature can be created to retain the information of students with a grade of zero for each semester.
+
+#  Relationship Between Features
+
+This section examines the relationships between key categorical and numerical features in the dataset. 
+
+## Grade Averages 
+
+Grade average in the first semester and second semester appear to have a positive linear relationship. Based on this model, for every one-unit increase in first semester grade average, we expect to see a 0.7 increase in second-semester grade average. 
+
+```{r grades}
+# Remove rows where Grade1 or Grade2 is zero
+filtered_data <- data[data$Grade1 != 0 & data$Grade2 != 0, ]
+
+# Fit a linear regression model
+model <- lm(Grade2 ~ Grade1, data = filtered_data)
+
+# Scatterplot of first-semester and second-semester average grades
+plot(filtered_data$Grade1, filtered_data$Grade2,
+     col = "#FFC20A",
+     pch = 19, 
+     main = "Average Grades",
+     xlab = "First Semester",
+     ylab = "Second Semester")
+
+# Add the regression line
+abline(model, col = "black", lwd = 2)  # Red regression line with thickness of 2
+
+# coefficient of Grade1)
+slope <- coef(model)[2]
+```
+
+##  Grades and Finances
+
+A minority of students have debt or unpaid tuition fees. In the figure below, the distribution of average grades is stratified by debt status and also by tuition status. The students in the minority for these categories appear to have a lower grade distribution. At the 0.05 significance level, there is sufficient evidence to conclude that the mean average grades differ significantly between these majority and minority groups. Analytic tasks will include removing or imputating grade values of zero, then re-examining the relationship. 
+
+
+#### Distribution of Average Grades by Debtor Status
+```{r boxplotdebt}
+col0 = c("#FFC20A", "#0C7BDC")
+
+# Set up layout for the boxplots
+par(mfrow = c(1, 2))  # 1 rows, 2 columns
+
+# Create two boxplots
+boxplot(data$Grade1 ~ data$Debtor, 
+        col = c("#FFC20A", "#0C7BDC"),
+        main = "First Semester",
+        xlab = " ",
+        ylab = "Average Grade",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+
+boxplot(data$Grade2 ~ data$Debtor,
+        col = c("#FFC20A", "#0C7BDC"),
+        main = "Second Semester",
+        xlab = " ",
+        ylab = " ",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+```
+
+#### Distribution of Average Grades by Tuition Status
+```{r boxplottuition}
+
+col1 = c("#0C7BDC", "#FFC20A")
+
+# Set up layout for the boxplots
+par(mfrow = c(1, 2))  # 1 rows, 2 columns
+
+boxplot(data$Grade1 ~ data$`Tuition Fees Up to Date`, 
+        col = col1,
+        main = "First Semester",
+        xlab = " ",
+        ylab = "Average Grade",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+boxplot(data$Grade2 ~ data$`Tuition Fees Up to Date`, 
+        col = col1,
+        main = "Second Semester",
+        xlab = " ",
+        ylab = " ",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+```
+
+```{r ttest_Debt}
+# T test between categorical variable and continuous variable
+invisible(t.test(data$Grade1 ~ data$Debtor, data = data))
+invisible(t.test(data$Grade2 ~ data$Debtor, data = data))
+```
+
+```{r ttest_tuition}
+# T test between categorical variable and continuous variable
+invisible(t.test(data$Grade1 ~ data$`Tuition Fees Up to Date`, data = data))
+invisible(t.test(data$Grade2 ~ data$`Tuition Fees Up to Date`, data = data))
+```
+
+## Grades and Gender
+
+Male students, accounting for 35.17% of the dataset, appear to achieve a lower average grade distribution. There is enough evidence to indicate a significant difference between this group's mean average grade and that of female students at the 0.05 significance level. Analytic tasks will include removing or imputating grade values of zero, then re-examining the relationship. 
+
+
+#### Distribution of Average Grades by Gender
+```{r boxplotgender}
+
+col1 = c("#0C7BDC", "#FFC20A")
+
+# Set up layout for the boxplots
+par(mfrow = c(1, 2))  # 1 rows, 2 columns
+
+boxplot(data$Grade1 ~ data$Gender, 
+        col = col1,
+        main = "First Semester",
+        xlab = " ",
+        ylab = "Average Grade",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+boxplot(data$Grade2 ~ data$Gender, 
+        col = col1,
+        main = "Second Semester",
+        xlab = " ",
+        ylab = " ",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+```
+
+```{r ttest_gender}
+# T test between categorical variable and continuous variable
+invisible(t.test(data$Grade1 ~ data$Gender, data = data))
+invisible(t.test(data$Grade2 ~ data$Gender, data = data))
+```
+
+
+#  References 
+
+**DATA**: M.V.Martins, D. Tolledo, J. Machado, L. M.T. Baptista, V.Realinho. (2021). Predict Students' Dropout and Academic Success. Kaggle. Attribution 4.0 International (CC BY 4.0). https://www.kaggle.com/datasets/harshitsrivastava25/predict-students-dropout-and-academic-success/data 
