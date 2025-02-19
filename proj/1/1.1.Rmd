@@ -1,7 +1,7 @@
 ---
 title: "Examining Relationships Between Socioeconomic Factors and Academic Performance to Improve Predictive Models of Student Success"
 author: "Christine Killion"
-date: "February 4, 2025"
+date: "Updated February 18, 2025"
 output:
   html_document: 
     toc: yes
@@ -162,10 +162,6 @@ if (!require("dplyr")) {
    install.packages("dplyr")
 library(dplyr)
 }
-if (!require("plotly")) {
-   install.packages("plotly")
-library(plotly)
-}
 if (!require("gridExtra")) {
    install.packages("gridExtra")
 library(gridExtra)
@@ -173,6 +169,10 @@ library(gridExtra)
 if (!require("tidyr")) {
    install.packages("tidyr")
 library(tidyr)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
 }
 
 
@@ -220,70 +220,39 @@ The dataset contains 4,424 observations and 34 feature variables.
 - **Age at enrollment** (integer): Age of the student when they are enrolled; 64.94% are 21 years old or younger. 
 - **International student** (binary): International students (i.e., not from Portugal) account for 2.49% of the sample. 
 - **Curricular Units 1st Semester** and **Curricular Units 2nd Semester** (integers): Number of curricular units **Credited**, **Enrolled**, and **Approved** for each semester. **Evaluations** encompasses the number of evaluations to curricular units in each semester, and **Without Evaluations** is the number of curricular units without evaluations in each semester. **Grade** is the average grade between 0 and 20 per semester.
-- Economic variables (continuous): This dataset includes continuous variables related to the **Unemployment Rate**, **Inflation Rate**, and **GDP**. 
+- Economic variables (continuous): This dataset includes continuous variables related to the **Unemployment Rate**, **Inflation Rate**, and **GDP**.
+- **Target** (categorical): A student's academic outcome: Dropout, graduate, enrolled. 
 
 ```{r data}
-data <- read.csv("https://christinekillion.github.io/machine_learning/student-success.csv")
+data <- read.csv("https://christinekillion.github.io/machine_learning/data/student-success.csv")
 
-# Remove the last feature ("Target" does not include any values)
-data <- data[, -ncol(data)]
+# Change column names
+colnames(data) <- c(
+  "Marital", "Application_M", "Application_O", "Course", 
+  "Attendance", "S_Qual", "Nationality", 
+  "M_Qual", "F_Qual", "M_Occ", 
+  "F_Occ", "Displaced", "Special_Needs", "Debtor", 
+  "Tuition", "Gender", "Scholarship", "Age", 
+  "International", "U_Credited1", "U_Enrolled1",
+  "U_Evaluated1", "U_Approved1", 
+  "Grade1", "U_WO_Eval1", 
+  "U_Credited2", "U_Enrolled2", 
+  "U_Evaluated2", "U_Approved2", 
+  "Grade2", "U_WO_Eval2", 
+  "Unemployment", "Inflation", "GDP", "Target"
+)
 
 # Create random observation ID and replace 8% of the corresponding observations with missing values 
 grades1.missing.id <- sample(1:4424, 353, replace = FALSE)
 grades2.missing.id <- sample(1:4424, 354, replace = FALSE) 
-data$Curricular.units.1st.sem..grade.[grades1.missing.id] <- NA
-data$Curricular.units.2nd.sem..grade.[grades2.missing.id] <- NA
+data$Grade1[grades1.missing.id] <- NA
+data$Grade2[grades2.missing.id] <- NA
 
 #Total the number of missing values per column.
 missing_per_column <- colSums(is.na(data))
 
 #Total the number of missing values in the dataset. 
 total_missing <- sum(is.na(data))
-
-# Original column names
-colnames(data) <- c(
-  "Marital.status", "Application.mode", "Application.order", "Course", 
-  "Daytime.evening.attendance", "Previous.qualification", "Nacionality", 
-  "Mother.s.qualification", "Father.s.qualification", "Mother.s.occupation", 
-  "Father.s.occupation", "Displaced", "Educational.special.needs", "Debtor", 
-  "Tuition.fees.up.to.date", "Gender", "Scholarship.holder", "Age.at.enrollment", 
-  "International", "Curricular.units.1st.sem..credited.", "Curricular.units.1st.sem..enrolled.",
-  "Curricular.units.1st.sem..evaluations.", "Curricular.units.1st.sem..approved.", 
-  "Curricular.units.1st.sem..grade.", "Curricular.units.1st.sem..without.evaluations.", 
-  "Curricular.units.2nd.sem..credited.", "Curricular.units.2nd.sem..enrolled.", 
-  "Curricular.units.2nd.sem..evaluations.", "Curricular.units.2nd.sem..approved.", 
-  "Curricular.units.2nd.sem..grade.", "Curricular.units.2nd.sem..without.evaluations.", 
-  "Unemployment.rate", "Inflation.rate", "GDP"
-)
-
-# Function to clean and reformat column names
-clean_column_names <- function(names) {
-  # Replace ".s." with "'s " (special case for possessive)
-  names <- gsub("\\.s\\.", "'s ", names)
-  
-  # Replace other periods with spaces
-  names <- gsub("\\.", " ", names)
-  
-  # Convert to title case (capitalize first letter of each word)
-  names <- tools::toTitleCase(names)
-  
-  # Change "Nacionality" to "Nationality"
-  names[names == "Nacionality"] <- "Nationality"
-  
-  # Keep "GDP" in all caps
-  names[names == "Gdp"] <- "GDP"
-  
-  # Replace "Sem " with "Semester"
-  names <- gsub("Sem ", "Semester", names, fixed = TRUE)
-  
-  return(names)
-}
-
-# Apply the function to the column names of the dataframe
-colnames(data) <- clean_column_names(colnames(data))
-
-# Change the column names for 1st and 2nd semester Grades 
-colnames(data)[c(24, 30)] <- c("Grade1", "Grade2")
 ```
 
 #  Distribution of Individual Features 
@@ -295,20 +264,20 @@ This section will describe the univariate distributions of the key categorical, 
 There are three key groups that are underrepresented within this dataset and should be carefully considered in the development of machine learning models so as not to reproduce bias. Section 3 of this report explores in more detail the relationship between these groups and academic achievement in the dataset. 
 
 ```{r}
-# Recode binary values from numbers to categories 
-data$Debtor <- recode(data$Debtor, `1` = "Debt", `0` = "No Debt")
-data$`Tuition Fees Up to Date` <- recode(data$`Tuition Fees Up to Date`, `1` = "Paid", `0` = "Unpaid")
-data$Gender <- recode(data$Gender, `1` = "Male", `0` = "Female")
-
 # Count the number of occurrences for each category
 debtor_counts <- table(data$Debtor)
-tuition_counts <- table(data$`Tuition Fees Up to Date`)
+tuition_counts <- table(data$Tuition)
 gender_counts <- table(data$Gender)
 
 # Create data frames from the counts for each category
 debtor_df <- as.data.frame(debtor_counts)
 tuition_df <- as.data.frame(tuition_counts)
 gender_df <- as.data.frame(gender_counts)
+
+# Recode binary values from numbers to categories 
+debtor_df$Var1 <- recode(debtor_df$Var1, `1` = "Debt", `0` = "No Debt")
+tuition_df$Var1 <- recode(tuition_df$Var1, `1` = "Paid", `0` = "Unpaid")
+gender_df$Var1 <- recode(gender_df$Var1, `1` = "Male", `0` = "Female")
 
 # Create the pie charts with ggplot2
 
@@ -357,9 +326,9 @@ qual <- data.frame(matrix(1:34, nrow = 34, ncol = 1))
 colnames(qual) <- c("Var1")
 
 # Calculate the count of each category
-S_qual <- data.frame(table(data$`Previous Qualification`))
-M_qual <- data.frame(table(data$`Mother's Qualification`))
-F_qual <- data.frame(table(data$`Father's Qualification`))
+S_qual <- data.frame(table(data$S_Qual))
+M_qual <- data.frame(table(data$M_Qual))
+F_qual <- data.frame(table(data$F_Qual))
 
 # Merge by the common column "Var1"
 qual <- merge(qual, S_qual, by = "Var1", all=TRUE)
@@ -419,6 +388,30 @@ interactive_plot
 
 The grade features for each semester contain both missing values and values of zero. When grades of zero are excluded, the grade distributions are approximately normally distributed. Data imputation could replace the missing values, or another binary feature can be created to retain the information of students with a grade of zero for each semester.
 
+```{r grade-histograms}
+
+# Remove grades of zero
+first_semester_grades <- data$Grade1[data$Grade1 != 0]
+second_semester_grades <- data$Grade2[data$Grade2 != 0]
+
+# Plot for first semester
+gradeplot1 <- ggplot(data.frame(grade = first_semester_grades), aes(x = grade)) +
+  geom_histogram(aes(y = ..density..), bins = 10, fill = "#ac1f67", color = "black", alpha = 0.7) +
+  stat_function(fun = dnorm, args = list(mean = mean(first_semester_grades), sd = sd(first_semester_grades)), color = "red", size = 1) +
+  labs(title = "First Semester Grades", x = "Grades", y = "Density") +
+  theme_minimal()
+
+# Plot for second semester
+gradeplot2 <- ggplot(data.frame(grade = second_semester_grades), aes(x = grade)) +
+  geom_histogram(aes(y = ..density..), bins = 10, fill = "#ac1f67", color = "black", alpha = 0.7) +
+  stat_function(fun = dnorm, args = list(mean = mean(second_semester_grades), sd = sd(second_semester_grades)), color = "blue", size = 1) +
+  labs(title = "Second Semester Grades", x = "Grades", y = "Density") +
+  theme_minimal()
+
+# Arrange the two plots side by side
+grid.arrange(gradeplot1, gradeplot2, ncol = 2)
+```
+
 #  Relationship Between Features
 
 This section examines the relationships between key categorical and numerical features in the dataset. 
@@ -445,7 +438,7 @@ plot(filtered_data$Grade1, filtered_data$Grade2,
 # Add the regression line
 abline(model, col = "black", lwd = 2)  # Red regression line with thickness of 2
 
-# coefficient of Grade1)
+# coefficient of Grade1
 slope <- coef(model)[2]
 ```
 
@@ -487,14 +480,14 @@ col1 = c("#0C7BDC", "#FFC20A")
 # Set up layout for the boxplots
 par(mfrow = c(1, 2))  # 1 rows, 2 columns
 
-boxplot(data$Grade1 ~ data$`Tuition Fees Up to Date`, 
+boxplot(data$Grade1 ~ data$Tuition, 
         col = col1,
         main = "First Semester",
         xlab = " ",
         ylab = "Average Grade",
         cex.axis = 0.9,  # Smaller font size for axis labels
         cex.lab = 0.9)   # Smaller font size for axis titles
-boxplot(data$Grade2 ~ data$`Tuition Fees Up to Date`, 
+boxplot(data$Grade2 ~ data$Tuition, 
         col = col1,
         main = "Second Semester",
         xlab = " ",
@@ -511,8 +504,8 @@ invisible(t.test(data$Grade2 ~ data$Debtor, data = data))
 
 ```{r ttest_tuition}
 # T test between categorical variable and continuous variable
-invisible(t.test(data$Grade1 ~ data$`Tuition Fees Up to Date`, data = data))
-invisible(t.test(data$Grade2 ~ data$`Tuition Fees Up to Date`, data = data))
+invisible(t.test(data$Grade1 ~ data$Tuition, data = data))
+invisible(t.test(data$Grade2 ~ data$Tuition, data = data))
 ```
 
 ## Grades and Gender
@@ -548,6 +541,166 @@ boxplot(data$Grade2 ~ data$Gender,
 # T test between categorical variable and continuous variable
 invisible(t.test(data$Grade1 ~ data$Gender, data = data))
 invisible(t.test(data$Grade2 ~ data$Gender, data = data))
+```
+
+## Curricular Units 
+
+This dataset includes multiple variables measuring credits for each semester: number of curricular units credited, enrolled, and approved. A significant number of the credited variables for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete. For this reason, we might consider only including approved curricular units as a potential variable in our model. 
+
+```{r credit_by_semester1}
+sem1_approved <- data$U_Approved1
+sem1_enrolled <- data$U_Enrolled1
+sem1_credited <- data$U_Credited1
+
+# Count frequencies of credits for each variable for the first semester
+sem1_approved_counts <- as.data.frame(table(sem1_approved))
+sem1_enrolled_counts <- as.data.frame(table(sem1_enrolled))
+sem1_credited_counts <- as.data.frame(table(sem1_credited))
+
+# Create bar plots for the first semester
+plot1 <- ggplot(sem1_approved_counts, aes(x = sem1_approved, y = Freq)) +
+  geom_bar(stat = "identity", fill = "#ac1f67", color = "black", alpha = 0.7) +
+  labs(title = " ", x = "Credits Approved", y = "Number of Occurrences") +  
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+plot2 <- ggplot(sem1_enrolled_counts, aes(x = sem1_enrolled, y = Freq)) +
+  geom_bar(stat = "identity", fill = "#0C7BDC", color = "black", alpha = 0.7) +
+  labs(title = "First Semester", x = "Credits Enrolled", y = " ") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+plot3 <- ggplot(sem1_credited_counts, aes(x = sem1_credited, y = Freq)) +
+  geom_bar(stat = "identity", fill = "#FFC20A", color = "black", alpha = 0.7) +
+  labs(title = " ", x = "Credited Units", y = " ") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+# Arrange the plots side by side for the first semester
+grid.arrange(plot1, plot2, plot3, ncol = 3)
+```
+
+```{r credit_by_semester2}
+sem2_approved <- data$U_Approved2
+sem2_enrolled <- data$U_Enrolled2
+sem2_credited <- data$U_Credited2
+
+# Count frequencies of credits for each variable for the second semester
+sem2_approved_counts <- as.data.frame(table(sem2_approved))
+sem2_enrolled_counts <- as.data.frame(table(sem2_enrolled))
+sem2_credited_counts <- as.data.frame(table(sem2_credited))
+
+# Create bar plots for the second semester
+plot1_2nd <- ggplot(sem2_approved_counts, aes(x = sem2_approved, y = Freq)) +
+  geom_bar(stat = "identity", fill = "#ac1f67", color = "black", alpha = 0.7) +
+  labs(title = " ", x = "Credits Approved", y = "Number of Occurrences") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+plot2_2nd <- ggplot(sem2_enrolled_counts, aes(x = sem2_enrolled, y = Freq)) +
+  geom_bar(stat = "identity", fill = "#0C7BDC", color = "black", alpha = 0.7) +
+  labs(title = "Second Semester", x = "Credits Enrolled", y = " ") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+plot3_2nd <- ggplot(sem2_credited_counts, aes(x = sem2_credited, y = Freq)) +
+  geom_bar(stat = "identity", fill = "#FFC20A", color = "black", alpha = 0.7) +
+  labs(title = " ", x = "Credited Units", y = " ") +
+  theme_minimal() +
+  theme(axis.text.x = element_blank())
+
+# Arrange the plots side by side for the second semester
+grid.arrange(plot1_2nd, plot2_2nd, plot3_2nd, ncol = 3)
+```
+
+
+## Stratifying Grades by Curricular Unit Group
+
+Based on the boxplots for grades stratified by the curricular unit approved group, it appears that students with between 4 and 8 curricular units approved achieve significantly higher grades than those with fewer than 4 and slightly higher grades on average than those more than 8. 
+
+
+```{r credits_approved_grouped}
+# Create Unit_Group1 based on U_Approved1
+data$Unit_Group1 <- cut(data$U_Approved1, 
+                        breaks = c(-Inf, 0, 3, 8, Inf), 
+                        labels = c("0", "1-3", "4-8", "9+"),
+                        right = TRUE)
+
+# Create Unit_Group2 based on U_Approved2
+data$Unit_Group2 <- cut(data$U_Approved2, 
+                        breaks = c(-Inf, 0, 3, 8, Inf), 
+                        labels = c("0", "1-3", "4-8", "9+"),
+                        right = TRUE)
+```
+
+```{r grade_credits_boxplot}
+col2 = c("#FFC20A", "#0C7BDC", "#ac1f67")
+
+# Filter out "0" group from both Unit_Group1 and Unit_Group2
+data_filtered1 <- data[data$Unit_Group1 != "0", ]
+data_filtered2 <- data[data$Unit_Group2 != "0", ]
+
+# Set up layout for the boxplots
+par(mfrow = c(1, 2))  # 1 row, 2 columns
+
+# Create the first boxplot for the first semester, excluding "0" group
+boxplot(data_filtered1$Grade1 ~ data_filtered1$Unit_Group1, 
+        col = col2,
+        main = "First Semester",
+        xlab = " ",
+        ylab = "Average Grade",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+
+# Create the second boxplot for the second semester, excluding "0" group
+boxplot(data_filtered2$Grade2 ~ data_filtered2$Unit_Group2,
+        col = col2,
+        main = "Second Semester",
+        xlab = " ",
+        ylab = " ",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+```
+
+Note a similar trend for the number of evaluations to curricular units. 
+
+```{r eval_grouped}
+# Create Eval_Group1 based on U_Evaluated1
+data$Eval_Group1 <- cut(data$U_Evaluated1, 
+                        breaks = c(-Inf, 0, 4, 10, Inf), 
+                        labels = c("0", "1-4", "5-10", "11+"),
+                        right = TRUE)
+
+# Create Eval_Group2 based on U_Evaluated2
+data$Eval_Group2 <- cut(data$U_Evaluated2, 
+                        breaks = c(-Inf, 0, 4, 10, Inf), 
+                        labels = c("0", "1-4", "5-10", "11+"),
+                        right = TRUE)
+```
+
+```{r grade_eval_boxplot}
+col3 = c("#FFC20A", "#0C7BDC", "#ac1f67", "#AFB1F0")
+
+# Set up layout for the boxplots
+par(mfrow = c(1, 2))  # 1 row, 2 columns
+
+# Create the first boxplot for the first semester
+boxplot(data$Grade1 ~ data$Eval_Group1, 
+        col = col3,
+        main = "First Semester",
+        xlab = "Evaluations",
+        ylab = "Average Grade",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+
+# Create the second boxplot for the second semester
+boxplot(data$Grade2 ~ data$Eval_Group2,
+        col = col3,
+        main = "Second Semester",
+        xlab = " ",
+        ylab = " ",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
 ```
 
 
