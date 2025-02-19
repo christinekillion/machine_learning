@@ -1,0 +1,524 @@
+---
+title: "Imputation and Feature Engineering Methods to Improve Predictive Model of Student Success"
+author: "Christine Killion"
+date: "February 19, 2025"
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: no
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 22px;
+  font-weight: bold;
+  color: #ac1f67;
+  text-align: center;
+  font-family: sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: strong;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 12px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: normal;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: sans-serif;
+    color: black;
+    text-align: center;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("palmerpenguins")) {
+   install.packages("palmerpenguins")
+library(palmerpenguins)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("naniar")) {
+   install.packages("naniar")
+library(naniar)
+}
+if (!require("pool")) {
+   install.packages("pool")
+library(pool)
+}
+if (!require("DBI")) {
+   install.packages("DBI")
+library(DBI)
+}
+if (!require("RMySQL")) {
+   install.packages("RMySQL")
+library(RMySQL)
+}
+if (!require("randomForest")) {
+   install.packages("randomForest")
+library(randomForest)
+}
+if (!require("ggiraph")) {
+   install.packages("ggiraph")
+library(ggiraph)
+}
+if (!require("highcharter")) {
+   install.packages("highcharter")
+library(highcharter)
+}
+if (!require("broom")) {
+   install.packages("broom")
+library(broom)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("ggplot2")) {
+   install.packages("ggplot2")
+library(ggplot2)
+}
+if (!require("dplyr")) {
+   install.packages("dplyr")
+library(dplyr)
+}
+if (!require("gridExtra")) {
+   install.packages("gridExtra")
+library(gridExtra)
+}
+if (!require("tidyr")) {
+   install.packages("tidyr")
+library(tidyr)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("caret")) {
+   install.packages("caret")
+library(caret)
+}
+if (!require("MASS")) {
+   install.packages("MASS")
+library(MASS)
+}
+
+## 
+knitr::opts_chunk$set(echo = TRUE,   # include code chunk in the output file
+                      warning = FALSE,# sometimes, you code may produce warning messages,
+                                      # you can choose to include the warning messages in
+                                      # the output file. 
+                      results = TRUE, # you can also decide whether to include the output
+                                      # in the output file.
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+#  Introduction
+
+The purpose of using this data set is to build models that predict student academic outcomes. In the first part of this project, I examined <a target="_blank" href="https://christinekillion.github.io/machine_learning/proj/1/1.1.html">relationships between socioeconomic factors and academic performance to improve predictive models of student success</a>. The goal of this report is to engineer the key features in the dataset in order to create a simpler model with improved predictive accuracy. The feature engineering in this report will focus on the features related to academic performance rather than student demographics. 
+
+In this report, I will begin by analyzing and addressing the missing values in the dataset and comparing the effectiveness of various imputation methods. I will then proceed to addressing issues with the key features, including combining and transforming grade features to normalize the distribution and merging information about curricular units to improve interpretability. 
+
+```{r data}
+data <- read.csv("https://christinekillion.github.io/machine_learning/data/student-success.csv")
+
+# Change column names
+colnames(data) <- c(
+  "Marital", "Application_M", "Application_O", "Course", 
+  "Attendance", "S_Qual", "Nationality", 
+  "M_Qual", "F_Qual", "M_Occ", 
+  "F_Occ", "Displaced", "Special_Needs", "Debtor", 
+  "Tuition", "Gender", "Scholarship", "Age", 
+  "International", "U_Credited1", "U_Enrolled1",
+  "U_Evaluated1", "U_Approved1", 
+  "Grade1", "U_WO_Eval1", 
+  "U_Credited2", "U_Enrolled2", 
+  "U_Evaluated2", "U_Approved2", 
+  "Grade2", "U_WO_Eval2", 
+  "Unemployment", "Inflation", "GDP", "Target"
+)
+
+# Create random observation ID and replace 8% of the corresponding observations with missing values 
+grades1.missing.id <- sample(1:4424, 353, replace = FALSE)
+grades2.missing.id <- sample(1:4424, 354, replace = FALSE) 
+data$Grade1[grades1.missing.id] <- NA
+data$Grade2[grades2.missing.id] <- NA
+
+# A "blank" answer for parent occupation is encoded as 13. Recode it as missing. 
+data <- data %>%
+  mutate(M_Occ = ifelse(M_Occ == 13, NA, M_Occ))
+
+data <- data %>%
+  mutate(F_Occ = ifelse(F_Occ == 13, NA, F_Occ))
+
+# Check for missing values in each column
+invisible(colSums(is.na(data)))
+```
+
+# Missing Values  
+
+The dataset contains 4,424 observations and 34 feature variables. Among these, two numerical variables have missing values: average grade for the first semester, which has 353 missing values, and average grade for the second semester, which has 354 missing values. Two categorical variables have missing values: mother's occupation (17) and father's occupation (19).
+
+To confirm that the missing values are missing at random, I create an indicator variable for whether a variable is missing. Then, I run a logistic regression model to determine whether the values are missing at random. 
+
+- Null hypothesis: The coefficients of the predictor variables are not significantly different from zero, and thus the missing values are missing at random. 
+- Alternative hypothesis: The coefficients of the predictor variables are significantly different from zero, and thus the missing values are not missing at random. 
+
+At the 0.05 significance level and with p-values of 1, I fail to reject the null hypothesis. The coefficients of the predictor variables are not significantly different from zero, thus the missing values for Grade1, Grade2, mother's occupation, and father's occupation appear to be missing at random. 
+
+```{r MAR}
+# Create missingness indicator variables for Grade1 and Grade2
+data$Missing_Grade1 <- ifelse(is.na(data$Grade1), 1, 0)
+data$Missing_Grade2 <- ifelse(is.na(data$Grade2), 1, 0)
+data$Missing_M_Occ <- ifelse(is.na(data$M_Occ), 1, 0)
+data$Missing_F_Occ <- ifelse(is.na(data$F_Occ), 1, 0)
+
+# Check for missingness based on other variables in the dataset  
+# Logistic regression model: Predict missingness in Grade1 based on other variables
+model_grade1 <- glm(Missing_Grade1 ~ ., data = data, family = binomial)
+invisible(summary(model_grade1))
+
+# Logistic regression model: Predict missingness in Grade2 based on other variables
+model_grade2 <- glm(Missing_Grade2 ~ ., data = data, family = binomial)
+invisible(summary(model_grade2))
+
+# Logistic regression model: Predict missingness in M_Occ based on other variables
+model_M_Occ <- glm(Missing_M_Occ ~ ., data = data, family = binomial)
+invisible(summary(model_M_Occ))
+
+# Logistic regression model: Predict missingness in F_Occ based on other variables
+model_F_Occ <- glm(Missing_F_Occ ~ ., data = data, family = binomial)
+invisible(summary(model_F_Occ))
+```
+
+## Replacement Imputation for Categorical Features
+
+Since the missing values for mother's and father's occupation account for less than 0.5% of each feature, I use the single imputation method of mode replacement. The mode for both mother's and father's occupation is "Unskilled Workers" (encoded as "10"). 
+
+```{r}
+invisible(tabulate(data$M_Occ))
+invisible(tabulate(data$F_Occ))
+
+data <- data %>%
+  mutate(M_Occ = ifelse(is.na(M_Occ), 10, M_Occ))
+
+data <- data %>%
+  mutate(F_Occ = ifelse(is.na(F_Occ), 10, F_Occ))
+```
+
+## Regression-based Imputation for Numerical Features
+
+In this section, I will create a random regression imputation model for the continuous response feature second semester grades and compare the results to simple linear regression imputation. The feature variable associated with the continuous response variable is first-semester grades, thus I use the simple Grade2~Grade1 linear regression model for imputation. 
+
+```{r imp_reg}
+data$Unit_ratio1 <- ifelse(data$U_Enrolled1 > 0, data$U_Approved1/data$U_Enrolled1, data$U_Approved1)
+data$Unit_ratio2 <- ifelse(data$U_Enrolled2 > 0, data$U_Approved2/data$U_Enrolled2, data$U_Approved2)
+
+pred.mdl = lm(Grade2~Grade1, data = data)
+newdata = data[is.na(data$Grade2),]
+pred.y = predict(pred.mdl, newdata = newdata)
+m0 = sum(is.na(data$Grade2))      # total number of missing values
+pred.resid = resid(pred.mdl)    # residual
+pred.yrand = pred.y + sample(pred.resid, m0, replace = TRUE)
+
+# Create a plot 
+plot(data$Grade1, data$Grade2, main = "Comparing Imputation Methods: Regression", xlab = "First Semester", ylab = "Second Semester", col = "gray")
+
+# plot a regression line 
+abline(pred.mdl, col = "gray", lty = 2, lwd = 2)
+
+# Plot points  
+points(newdata$Grade1, pred.yrand, pch = 19, col = rgb(12/255, 123/255, 220/255, alpha = .8)) 
+points(newdata$Grade1, pred.y, pch = 19, col = rgb(172/255, 31/255, 103/255, alpha = .8)) 
+
+# Add the legend 
+legend("topleft", 
+       legend = c("Regression imputation", "Random regression imputation", "Original datapoints"),
+       col = c(rgb(172/255, 31/255, 103/255, alpha = 1), rgb(12/255, 123/255, 220/255, alpha = 1), rgb(128/255, 128/255, 128/255, alpha = .5)),
+       pch = c(19, 19, 1), 
+       xpd = TRUE, 
+       inset = c(.1, .1),   # Adjust inset 
+       cex = 0.6)             # Smaller font size (default is 1)
+```
+
+## Multiple Imputation
+
+I perform multiple imputation for grades by chained equations through the MICE package using predictive mean matching for the grade variables. 
+
+```{r mice}
+#create a new dataframe to test MICE algorithm 
+grades <- data
+
+# Use Predictive Mean Matching (PMM) for the continuous variables to perform MICE imputation
+imputed_data1 <- mice(grades, method = "pmm", m = 4, maxit = 5, seed = 14)
+
+#Fit model to imputed dataset
+model_imp_2 <- with(imputed_data1, lm(grades$Grade2 ~ grades$Grade1))
+
+#Combine parameter estimates
+pooled_results2 <- pool(model_imp_2) 
+
+# Summarize results
+invisible(summary(pooled_results2))
+
+# View the imputed data (completed dataset)
+completed_data <- complete(imputed_data1)
+
+# Add a new column to differentiate original vs imputed data
+grades$Data_Type <- "Original"
+completed_data$Data_Type <- "Imputed"
+
+# Combine original and imputed data into one data frame
+combined_data <- rbind(
+  data.frame(Grade1 = grades$Grade1, Grade2 = grades$Grade2, Data_Type = grades$Data_Type),
+  data.frame(Grade1 = completed_data$Grade1, Grade2 = completed_data$Grade2, Data_Type = completed_data$Data_Type)
+)
+
+# Reshape the data from wide to long format for ggplot
+long_data <- gather(combined_data, key = "Grade_Type", value = "Grade_Value", Grade1, Grade2)
+
+# Plot a layered density plot for Grade1 and Grade2
+ggplot(long_data, aes(x = Grade_Value, fill = Data_Type, color = Data_Type)) +
+  geom_density(alpha = 0.2) +  # Add density curves with transparency
+  facet_wrap(~Grade_Type, scales = "free", ncol = 2) +  # Facet for Grade1 and Grade2
+  labs(title = "Comparison of Original and Imputed Data",
+       x = "Grade Value", y = "Density") + 
+  scale_fill_manual(values = c("Original" = "#0C7BDC", "Imputed" = "#FFC20A")) +
+  scale_color_manual(values = c("Original" = "#0C7BDC", "Imputed" = "#FFC20A")) +
+  theme_minimal()  # Apply minimal theme
+```
+
+## Comparing Imputation Methods
+
+The plot below illustrates the results of the MICE method of imputation compared to regression imputation. The MICE method produces a close fit with the data. 
+
+```{r imp_reg_comp}
+# Create the new dataset by subsetting the original data
+imp_data_only <- combined_data[combined_data$Data_Type == "Imputed", ]
+
+# Create a plot 
+plot(data$Grade1, data$Grade2, main = "Comparing Imputation Methods: Regression vs. MICE", xlab = "First Semester", ylab = "Second Semester", col = "black")
+
+# plot a regression line 
+abline(pred.mdl, col = "gray", lty = 2, lwd = 2)
+
+# Plot points  
+points(imp_data_only$Grade1, imp_data_only$Grade2, pch = 19, col = rgb(255/255, 194/255, 10/255, alpha = .2))   
+points(newdata$Grade1, pred.yrand, pch = 19, col = rgb(12/255, 123/255, 220/255, alpha = 0.5)) 
+points(newdata$Grade1, pred.y, pch = 19, col = rgb(172/255, 31/255, 103/255, alpha = .5)) 
+
+# Add the legend 
+legend("topleft", 
+       legend = c("Regression imputation", "Random regression imputation", "Multiple imputation", "Original datapoints"),
+       col = c(rgb(172/255, 31/255, 103/255, alpha = 1), rgb(12/255, 123/255, 220/255, alpha = 1), rgb(255/255, 194/255, 10/255, alpha = 1), rgb(0/255, 0/255, 0/255, alpha = 1)),
+       pch = c(19, 19, 19, 1),
+       xpd = TRUE, 
+       inset = c(.1, .1),   # Adjust inset 
+       cex = 0.6)             # Smaller font size (default is 1)
+```
+
+# Feature Engineering 
+
+## Feature Transformation
+
+In this section, I will address skewness in key features and apply transformation methods to improve feature distribution and prepare the data for modeling. 
+
+### Grades 
+
+The first and second semester grade features have bimodal distributions due to the quantity of zero grade values. I create a new variable that averages first and second semester grades to combine information from both features and reexamine the distribution. 
+
+```{r new_grades}
+data2 <- completed_data # use data2 going forward, which includes imputed values  
+
+data2$avg_grade <- (data2$Grade1 + data2$Grade2)/2 # create grade average variable
+
+hist(data2$avg_grade, 
+     main="Histogram of Grade Average", 
+     xlab="Grade Average", 
+     ylab="Frequency", 
+     col="#0C7BDC", 
+     border="black")
+```
+
+To transform grade average into a more normalized distribution, I perform a Box-Cox transformation on a subset of data that includes only grade averages greater than zero. I then incorporate the subset back into the dataset while retaining the grade scores of zero, as these are highly correlated with the dropout target. 
+
+```{r boxcox_grade}
+# Subset completed_data to include only rows where average grade > 0
+cd_subset <- subset(data2, avg_grade > 0)
+
+# Apply Box-Cox transformation to avg_grade
+boxcox_result_avg_grade <- boxcox(avg_grade ~ 1, data = cd_subset, plotit = FALSE)
+lambda_avg_grade <- boxcox_result_avg_grade$x[which.max(boxcox_result_avg_grade$y)]
+
+# Apply the transformation to avg_grade using the optimal lambda
+cd_subset$avg_grade_boxcox <- (cd_subset$avg_grade^lambda_avg_grade - 1) / lambda_avg_grade
+
+# Reshape the data to long format  
+cd_subset_long <- reshape(cd_subset, 
+                          varying = c("avg_grade", "avg_grade_boxcox"),
+                          v.names = "avg_grade_value",
+                          timevar = "distribution_type",
+                          times = c("Original", "Box-Cox Transformed"),
+                          direction = "long")
+
+# Plot density curves for original avg_grade and transformed avg_grade_boxcox
+ggplot(cd_subset_long, aes(x = avg_grade_value, fill = distribution_type)) +
+  geom_density(alpha = 0.8) +
+  labs(title = "Grade Average: Original vs. Box-Cox Transformed",
+       x = "Average Grade", y = "Density", fill = "Distribution") +
+  scale_fill_manual(values = c("#FFC20A", "#0C7BDC")) +  # Assign colors for the legend 
+  theme_minimal() +
+  theme(legend.position = "top",    # Moves the legend to the top
+        panel.grid = element_blank())  # Removes the grid lines
+
+# merge transformed data into data2 
+data2$avg_grade_boxcox <- ifelse(data2$avg_grade == 0, 0, cd_subset$avg_grade_boxcox)
+```
+
+## Feature Grouping
+
+In this section, I will use strategies to combine and group information across key features to prepare the data for a simpler model and improve interpretability. 
+
+### Curricular Units 
+
+This dataset includes multiple variables measuring curricular units for each semester, including the number of curricular units credited, enrolled, approved, and evaluated. A significant number of the credited variables for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete. For this reason, we might consider only including approved curricular units as a potential variable in our model. 
+
+To simplify curricular unit variables for better interpretability, I create a new variable combining approved credits for both semesters, i.e., total approved curricular units for a student's first year. I then bin the new variable into four category ranges: 
+
+- 0, which would be considered no curricular units approved for either semester
+- 1-5, which could be considered few curricular units approved 
+- 6-9, which could be considered a low but typical range of curricular units approved 
+- 10-12, which could be considered a typical range of curricular units approved
+- 13-16, which could be considered a high but typical range of curricular units
+- 17+, which could be considered the highest range of curricular units 
+
+Based on the bar chart grouping the target by approved curricular units, it appears that students with fewer approved curricular units are more likely to dropout while students with more approved curricular units are more likely to graduate. 
+
+Finally, I encode the new categorical feature approved curricular units to prepare this feature for modeling.  
+
+```{r bin_unit}
+data2$AppUnit <- (data2$U_Approved2 + data2$U_Approved1) #create a new combined approved credits 
+
+# Bin average approved units 
+data2$AppUnit <- cut(data2$AppUnit, 
+                        breaks = c(-Inf, 0, 5, 9, 12, 16, Inf), 
+                        labels = c("0", "1-5", "6-9", "10-12", "13-16", "17+"),
+                        right = TRUE)
+
+# Create the stacked bar chart
+ggplot(data2, aes(x = AppUnit, fill = Target)) +
+  geom_bar(position = "stack") +  # Stacked bar chart
+  scale_fill_manual(values = c("#FFC20A", "#0C7BDC", "#ac1f67")) +  # Custom colors
+  labs(title = "Approved Curricular Units and Target",
+       x = "Approved Units",
+       y = "Frequency",
+       fill = "Target Categories") +  # Label the fill (legend)
+  theme_minimal() +  # Use a minimal theme
+  theme(legend.position = "top")  # Place legend at the top
+
+# recode AppUnit
+data2$AppUnit <- recode(data2$AppUnit, "0" = 0, "1-5" = 1, "6-9" = 2, "10-12" = 3, "13-16" = 4, "17+" = 5)
+```
+
+## Feature Selection 
+
+To proceed with model building, I recommend removing irrelevant or redundant features. This report included measures to combine information for key features including grades and curricular units. Thus, we may remove the variables associated with first and second semester grade and proceed with the transformed grade average variable "grade". Similarly, we may remove the curricular unit variables and proceed with the new feature "unit", which is a measure of total approved curricular units in a student's first year.
+
+```{r}
+# create a new dataset that does not include redundant features
+data3 <- subset(data2, select = -c(U_Credited1, U_Enrolled1, U_Evaluated1, U_Approved1, Grade1, U_WO_Eval1, U_Credited2, U_Enrolled2, U_Evaluated2, U_Approved2, Grade2, U_WO_Eval2, Missing_Grade1, Missing_Grade2, Missing_M_Occ, Missing_F_Occ, Data_Type, Unit_ratio1, Unit_ratio2, avg_grade))
+
+# Rename specific columns
+colnames(data3)[colnames(data3) == "avg_grade_boxcox"] <- "Grade"
+colnames(data3)[colnames(data3) == "AppUnit"] <- "Unit"
+```
+
+# Conclusion
+
+The next step in the project will be to determine how best to handle student demographic information — whether this should be included (and how to best do so without reproducing bias in the predictive model) or excluded entirely in favor of using academic performance indicators as the sole predictive measure of whether a student will dropout, remain enrolled, or graduate. 
+
+#  References 
+
+**DATA**: M.V.Martins, D. Tolledo, J. Machado, L. M.T. Baptista, V.Realinho. (2021). Predict Students' Dropout and Academic Success. Kaggle. Attribution 4.0 International (CC BY 4.0). https://www.kaggle.com/datasets/harshitsrivastava25/predict-students-dropout-and-academic-success/data 
