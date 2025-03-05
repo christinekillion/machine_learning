@@ -1,5 +1,5 @@
 ---
-title: "Evaluating Predictive Models of University Student's Academic Outcomes"
+title: "Exploring Regression Models for Predicting University Students' Academic Outcomes"
 author: "Christine Killion"
 date: "March 5, 2025"
 output:
