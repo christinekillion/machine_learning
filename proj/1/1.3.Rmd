@@ -203,13 +203,13 @@ knitr::opts_chunk$set(echo = TRUE,   # include code chunk in the output file
 
 The purpose of this report is to apply a machine learning approach to building regression models that predict student academic outcomes. The report draws from data and research by the authors of <em>Early Prediction of Student’s Performance in Higher Education: A Case Study</em>.<a href="#1"><sup>1</sup></a>
 
-The questions I will seek to answer in this report are two-fold: First, do macroeconomic factors have any predictive influence on a student's grades and thus whether they should be considered in machine learning models to predict student academic performance?  Secondly, what factors effectively predict whether a student drops out out of their course of study? 
+The questions I will seek to answer in this report are two-fold: First, do macroeconomic factors have any predictive influence on a student's grades and thus whether they should be considered in machine learning models to predict student academic performance?  Secondly, what factors effectively predict whether a student drops out of their course of study? 
 
-In this report, I use exploratory data analysis to examine the features closely correlated with student academic performance. Understanding these relationships may help inform the development of machine learning models that more accurately predict academic outcome while mitigating bias. The latter portion of the report is dedicated to using this information to develop predictive regression models for student outcomes, measured by second-semester grade average and dropout status.
+In this report, I use exploratory data analysis to examine the features in the dataset that may potentially help predict student academic performance. Understanding the distributions of the features and the relationships between them may help inform the development of machine learning models that more accurately predict academic outcome while mitigating bias. The latter portion of the report is dedicated to using this information to engineer the features and develop predictive regression models for student outcomes, measured by second-semester grade average and dropout status.
 
 # Exploratory Data Analysis
 
-This dataset contains features provided by a higher education institution in Portugal and collected from various disjoint databases about students at the time of their enrollment in an undergraduate degree program. The purpose of the dataset is to predict student dropout and academic success. The features relate to student and parent demographics, socio-economic indicators, degree program, and academic performance at the end of the first and second semesters. The collected data previously underwent cleaning and numerical recoding.<a href="#2"><sup>2</sup></a>
+This dataset contains features provided by a higher education institution in Portugal and collected from various disjoint databases about students at the time of their enrollment in an undergraduate degree program. The features relate to student and parent demographics, socioeconomic indicators, course of study, academic performance, and the targeted outcome: whether a student graduates, drops out, or remains enrolled. The collected data previously underwent cleaning and numerical recoding to prepare it for the modeling task of classification. However, instead of classification, this report will focus on regression problems.<a href="#2"><sup>2</sup></a>
 
 ##  List of Features
 
@@ -234,7 +234,7 @@ The dataset contains 4,424 observations and 34 feature features.
 - **International student** (binary): International students (i.e., not from Portugal) account for 2.49% of the sample. 
 - **Curricular Units 1st Semester** and **Curricular Units 2nd Semester** (integers): Number of curricular units **Credited**, **Enrolled**, and **Approved** for each semester. **Evaluations** encompasses the number of evaluations to curricular units in each semester, and **Without Evaluations** is the number of curricular units without evaluations in each semester. **Grade** is the average grade between 0 and 20 per semester.
 - Economic features (continuous): This dataset includes continuous features related to the **Unemployment Rate**, **Inflation Rate**, and **GDP**.
-- **Target** (categorical): A student's academic outcome: Dropout, graduate, enrolled. 
+- **Target** (categorical): A student's academic outcome classified across three categories: Dropout, graduate, and enrolled. 
 
 ```{r data}
 data <- read.csv("https://christinekillion.github.io/machine_learning/data/student-success.csv")
@@ -270,11 +270,11 @@ total_missing <- sum(is.na(data))
 
 ##  Distribution of Individual Features 
 
-This section will describe the univariate distributions of the key categorical, dichotomous, and continuous features in the dataset and analyze any potential issues for machine learning applications. 
+This section will describe the univariate distributions of the key categorical, binary, and continuous features in the dataset and highlight potential issues for regression modeling.  
 
 **Student Groups of Interest**
 
-There are three key groups that are underrepresented within this dataset and should be carefully considered in the development of machine learning models so as not to reproduce bias. Section 2.3 of this report explores in more detail the relationship between these groups and academic achievement. 
+There are three key groups that are underrepresented within this dataset and should be carefully considered in the development of machine learning models so as not to reproduce bias. Section 2.3 of this report explores in more detail the relationship between these groups and academic achievement.
 
 ```{r}
 # Count the number of occurrences for each category
@@ -330,13 +330,15 @@ grid.arrange(
 ```
 
 
-**Parental Education**
+**Parental Education and Occupation**
 
-This dataset contains the previous academic qualifications of the student, mother, and father. For students, 84.02% have completed secondary education. The parental qualification distributions do not reflect that of the students: There is a wider range of educational categories for each of the parent groups (likely due to the disparate sources of data). When recoded and grouped into three main categories (secondary education, higher education, and other), the distribution of parent qualifications in the dataset indicates that most of the parent qualifications fall into the "other" category. 
+This dataset contains the previous academic qualifications of the student, mother, and father. For students, 84.02% have completed secondary education. The parental qualification distributions do not reflect that of the students: There is a wider range of educational categories for each of the parent groups (likely due to the disparate sources of data). When recoded and grouped into three main categories (secondary education, higher education, and other), the distribution of parent qualifications in the dataset indicates that most of the parent qualifications fall into the "other" category.
+
+Parental occupation is similarly classified across a range of categories. Should parental education or occupation prove to be useful features in regression modeling, the granular categorization could potentially be an issue in the interpretability of a regression model. 
 
 **Grade Distribution**
 
-The grade features for each semester contain both missing values and values of zero. When grades of zero are excluded, the grade distributions are approximately normally distributed. Data imputation could replace the missing and zero values, or another binary feature can be created to retain the information of students with a grade of zero for each semester.
+The average grade features for each semester contain both missing values and values of zero. When grades of zero are excluded, the grade distributions are approximately normally distributed. Data imputation methods can be used to replace the missing and zero values. Additionally, a binary feature can be created to retain the information of whether a student has a recorded grade of zero for each semester (so as not to lose that information, which could potentially prove useful in regression model). 
 
 ##  Relationship Between Features
 
@@ -344,7 +346,7 @@ This section examines the relationships between key categorical and numerical fe
 
 **Grades and Student Financials**
 
-A minority of students in the dataset have debt or unpaid tuition fees. The distribution of average grades, when stratified by debt status and also by tuition status, show that the students in the minority for these categories appear to have a lower grade distribution. At the 0.05 significance level, there is sufficient evidence to conclude that the mean average grades differ significantly between these majority and minority groups. Removing or imputing grade values of zero is recommended before proceeding with modeling. 
+A minority of students in the dataset have debt or unpaid tuition fees. The distribution of average grades, when stratified by debt status and also by tuition status, show that the students in the minority for these categories appear to have a lower grade distribution. Removing or imputing grade values of zero is recommended before proceeding with modeling and may help mitigate some of this bias. 
 
 <center><span style="font-size: 18px; color: #ac1f67;">**Are the Student's Tuition Fees Up to Date?**</span></center>
 ```{r boxplottuition, echo=FALSE}
@@ -379,7 +381,7 @@ axis(1, at = c(1, 2), labels = c("No", "Yes"), cex.axis = 0.9)
 
 **Grades and Gender**
 
-Male students, accounting for 35.17% of the dataset, appear to achieve a lower average grade distribution. Removing or imputating grade values of zero is recommended before modeling. 
+Male students, accounting for 35.17% of the dataset, appear to achieve a lower average grade distribution. Removing or imputating grade values of zero is recommended before modeling to help mitigate this bias.  
 
 <center><span style="font-size: 18px; color: #ac1f67;">**Distribution of Average Grades by Gender**</span></center>
 ```{r boxplotgender, echo=FALSE}
@@ -415,11 +417,11 @@ axis(1, at = c(1, 2), labels = c("Female", "Male"), cex.axis = 0.9)
 
 **Grades and Curricular Units**
 
-This dataset includes multiple features measuring credits for each semester: number of curricular units credited, enrolled, and approved. A significant number of the credited features for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete. For this reason, I might consider only including approved curricular units as a potential feature in the model. 
+This dataset includes multiple features measuring credits for each semester: i.e., number of curricular units credited, enrolled, approved, and evaluated. A significant number of the credited features for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete. For this reason, I might consider only including approved curricular units as a potential feature in the model. 
 
 Further, note that when approved curricular unit is grouped and compared to student grades, it appears that students with between 4 and 8 curricular units approved achieve significantly higher grades than those with fewer than 4 and slightly higher grades on average than those more than 8. (Note that the number of evaluations to curricular units follows a similar trend).
 
-This indicates that curricular units may be a significant feature in predicting student academic outcomes. The features related to curricular units will need to be engineered to reduce dimensionality and prepare them for modeling. 
+This indicates that curricular units may be a relevant feature in predicting student academic outcomes. The features related to curricular units will need to be engineered to reduce dimensionality and prepare them for modeling. 
 
 ```{r credits_approved_grouped}
 # Create Unit_Group1 based on U_Approved1
@@ -466,9 +468,9 @@ boxplot(data_filtered2$Grade2 ~ data_filtered2$Unit_Group2,
 
 # Feature Engineering 
 
-What follows is a summary of the steps taken to engineer the key features in the dataset in order to create a simpler model with improved predictive accuracy. The feature engineering in this report will focus on the features related to academic performance rather than student demographics. 
+What follows is a summary of the steps taken to engineer the key features in the dataset to prepare them for regression modeling. 
 
-In this report, I will begin by analyzing and addressing the missing values in the dataset and comparing the effectiveness of various imputation methods. I will then proceed to addressing issues with the key features, including combining and transforming grade features to normalize the distribution and merging information about curricular units to improve interpretability. 
+I will begin by analyzing and addressing the missing values in the dataset and comparing the effectiveness of various imputation methods. I will then proceed to addressing issues with the key features, including combining and transforming grade features to normalize the distribution, merging information about curricular units to reduce dimensionality and improve interpretability, and transforming the target by establishing a binary, numerically encoded feature measuring whether a student drops out of their course of study. 
 
 ```{r recode_data}
 # Create random observation ID and replace 8% of the corresponding observations with missing values 
@@ -490,9 +492,9 @@ invisible(colSums(is.na(data)))
 
 ## Missing Values  
 
-The dataset contains 4,424 observations and 34 feature features. Among these, two numerical features have missing values: average grade for the first semester, which has 353 missing values, and average grade for the second semester, which has 354 missing values. I assume these values are missing at random since there does not appear to be a pattern to their missingness. 
+Among the dataset's 4,424 observations and 34 features, two numerical features have missing values: average grade for the first semester (353 missing values) and average grade for the second semester (354 missing values). I assume these values are missing at random since there does not appear to be a pattern to their missingness. 
 
-The first and second semester grade features have bimodal distributions due to the quantity of zero grade values. To address this, I will treat the zeros as missing values that could be due to students missing an exam or another factor. There are 665 zeros for first semester grade averages and 793 for the second semester. However, because a grade of zero may be relevant for predicting the target feature (i.e., classifying student outcomes into graduate, dropout, enrolled), I capture this information about zero grades for each semester in new binary features Zero1 and Zero2. Note that imputating zero grade values also addresses some of the gender bias in the data, which is highlighted in Section 2.4.3. 
+Additionally, note that the first and second semester grade features have bimodal distributions due to the quantity of zero grade values. To address this, I will treat the zeros as missing values that could be due to students missing an exam, among other possibly random reasons. There are 665 zeros among first-semester grade averages and 793 among second-semester grade averages. However, because a grade of zero may be relevant for predicting student dropout, I capture this information about zero grades for each semester in two new binary, numerically encoded features: Zero1 and Zero2. Note that imputating zero grade values also addresses some of the gender bias in the data, which is highlighted in Section 2.4.3. 
 
 ```{r grade_of_zero}
 # Create the Zero1 feature (1 if Grade1 is 0, otherwise 0, including NAs as 0)
@@ -510,7 +512,7 @@ data$Grade2[data$Grade2 == 0] <- NA
 
 ### Replacement Imputation for Categorical Features
 
-Two categorical features in this dataset have missing values: mother's occupation (17 missing) and father's occupation (19 missing).
+Two categorical features in this dataset have missing values: mother's occupation (17 missing) and father's occupation (19 missing). There are many reasons that these values may be missing; for instance, some students may have family structures that do not include a mother, a father, or both. Alternatively, it's possible that some parents did not provide the information on their background or that the information was not properly recorded. I will assume the values are missing at random. 
 
 Since the missing values for mother's and father's occupation account for less than 0.5% of each feature, I use the single imputation method of mode replacement. The mode for both mother's and father's occupation is "Unskilled Workers" (encoded as "10"). 
 
@@ -527,7 +529,7 @@ data <- data %>%
 
 ### Regression-based Imputation for Numerical Features
 
-In this section, I will create a random regression imputation model for the continuous response feature second semester grades and compare the results to simple linear regression imputation. Note that grade average in the first semester and second semester have a positive linear relationship, thus I use the simple Grade2~Grade1 linear regression model for imputation. 
+In this section, I will create a random regression imputation model for the continuous response feature second-semester grades and compare the results to simple linear regression imputation. Note that grade average in the first semester and second semester have a positive linear relationship, thus I use the simple Grade2~Grade1 linear regression model for imputation. 
 
 ```{r imp_reg}
 pred.mdl = lm(Grade2~Grade1, data = data)
@@ -559,7 +561,7 @@ legend("topleft",
 
 ### Multiple Imputation
 
-I perform multiple imputation for grades by chained equations through the MICE package using predictive mean matching for the grade features, which produces a close fit with the data. 
+I perform multiple imputation for grades by chained equations through the MICE package using predictive mean matching for the grade features, which produces a close fit with the data while still maintaining randomness and variability. 
 
 ```{r mice, results='hide'}
 #create a new dataframe to test MICE algorithm 
@@ -606,11 +608,11 @@ ggplot(long_data, aes(x = Grade_Value, fill = Data_Type, color = Data_Type)) +
 
 ## Feature Engineering 
 
-In this section, I will address skewness and other potential issues in key features and apply transformation methods to improve feature distribution and prepare the data for modeling. 
+In this section, I will address skewness and other potential issues in key features and apply transformation methods to improve feature distribution and prepare the data for regression modeling. 
 
 ### Feature Transformation
 
-I create a new feature that averages first and second semester grades to combine information from both features and reexamine the distribution. 
+I create a new feature that averages first and second semester grades to combine information from both features. 
 
 ```{r new_grades}
 data2 <- completed_data 
@@ -618,7 +620,7 @@ data2 <- completed_data
 data2$avg_grade <- (data2$Grade1 + data2$Grade2)/2 # create grade average feature
 ```
 
-To transform the grade features into more normalized distributions, I perform Box-Cox transformations. Following imputation, all values are positive and there are no missing or zero values.
+Next, to transform the grade features into more normalized distributions, I perform Box-Cox transformations. Following imputation, all values are positive and there are no missing or zero values.
 
 ```{r boxcox_grade_1, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
 # Open a null graphics device to prevent plotting
@@ -709,21 +711,19 @@ ggplot(dl_boxplot_grades, aes(x = Value, fill = Type)) +
   scale_fill_manual(values = c("Original" = "#0C7BDC", "Transformed" = "#FFC20A"))
 ```
 
-I also combine information about zero grades into a new feature called "Zero." Note that I captured this information when I created the binary features Zero1 and Zero2 before imputing for grades of zero. 
+I also combine information about student grade averages originally recorded as zero in a new feature called Zero. This feature categorizes students into three categories: 0 for no recorded grade average of zero, 1 for 1 semester with a recorded grade average of zero, and 2 for both semesters with a recorded grade average of zero. 
 
 ```{r}
 data2$Zero <- data2$Zero1 + data2$Zero2
 ```
 
-Lastly, I recode the Target feature to be numeric and create a binary Dropout feature based on Target that indicates whether a student is recorded to have dropped out of their course of study. 
+Lastly, I recode the Target feature so that its values are numeric and create a binary, numerically encoded Dropout feature based on the Target that indicates whether a student is recorded to have dropped out of their course of study. 
 
 ### Feature Grouping
 
-In this section, I will use strategies to combine and group information across key features to prepare the data for a simpler model and improve interpretability. 
+In this section, I will use strategies to combine and group information across key features to prepare the data for modeling and ensure interpretability. 
 
-This dataset includes multiple features measuring curricular units for each semester, including the number of curricular units credited, enrolled, approved, and evaluated. A significant number of the credited features for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete. For this reason, I might consider only including approved curricular units as a potential feature in the model. 
-
-To simplify curricular unit features for better interpretability, I create a new feature combining approved credits for both semesters, i.e., total approved curricular units for a student's first year. I then bin the new feature into four category ranges: 
+This dataset includes multiple features measuring curricular units for each semester, including the number of curricular units credited, enrolled, approved, and evaluated. A significant number of the credited features for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete. The distribution of approved curricular units is the closest to normal among all curricular unit features, so I proceed with this feature based on the assumption that these features capture overlapping information. I then combine the first and second semester approved curricular units in a new called AppUnit, which measures the total approved curricular units for a student's first year. To improve interpretability, I bin the new feature into category ranges (note that these ranges were established based on research into average curricular units in Portugal as well as an evaluation of the feature distribution):
 
 - 0, which would be considered no curricular units approved for either semester
 - 1-5, which could be considered few curricular units approved 
@@ -732,9 +732,9 @@ To simplify curricular unit features for better interpretability, I create a new
 - 13-16, which could be considered a high but typical range of curricular units
 - 17+, which could be considered the highest range of curricular units 
 
-Based on the bar chart grouping the target by approved curricular units, it appears that students with fewer approved curricular units are more likely to dropout while students with more approved curricular units are more likely to graduate. 
+When comparing the distribution of approved curricular units across each category of the Target feature (Dropout, Enrolled, and Graduate), it appears that students who dropout have a distribution that is skewed left (i.e., fewer approved curricular units) while students classified as enrolled or graduated have a somewhat normal distribution. This intuitively makes sense; students who drop out of their course of study early will have fewer approved curricular units. 
 
-Finally, I encode the new categorical feature approved curricular units to prepare this feature for modeling.  
+Finally, I encode the new categorical feature to prepare it for modeling.  
 
 ```{r bin_unit}
 data2$AppUnit <- (data2$U_Approved2 + data2$U_Approved1) #create a new combined approved credits 
@@ -778,9 +778,9 @@ data2$AppUnit <- recode(data2$AppUnit, "0" = 0, "5" = 1, "9" = 2, "12" = 3, "16"
 
 ## Feature Selection 
 
-To proceed with model building, I remove irrelevant or redundant features. Section 3.2 outlined the strategies for combining information for key features including grades and curricular units. Thus, I remove the features associated with first- and second-semester grade averages and proceed with the transformed grade average feature. Similarly, I may remove the curricular unit features and proceed with the new associated feature, which is a measure of total approved curricular units in a student's first year.
+To proceed with model building, I remove irrelevant or redundant features. Section 3.2 outlined the steps taken to combine information for key features, including grades and curricular units. I remove the original features whose information the newly created or transformed features captured. 
 
-What follows is a summary of the features that will be considered in developing machine learning models. For ease of reference, these have been grouped by type into student background and demographic, student financial, macroeconomic, and academic.  
+What follows is a summary of the features that will be considered in developing machine learning models. For ease of reference, these have been grouped by type into student background and demographic, student financial, macroeconomic, and academic features. 
 
 **Student Background and Demographic Features**
 
@@ -807,7 +807,7 @@ What follows is a summary of the features that will be considered in developing 
 - **Course** (categorical): 17 numerically encoded categories for chosen course of study.
 - **Daytime/evening attendance** (binary): Whether a student attends during the day or in the evening; numerically encoded.
 - **Previous Qualification** (categorical): 17 numerically encoded categories of highest education level, from secondary education to master's degree.
-- **Approved Curricular Units** (integer): The number of approved curricular units for the first and second semester.
+- **Approved Curricular Units** (categorical): The number of approved curricular units for the first and second semester.
 - **Target** (categorical): A student's academic outcome, numerically encoded and classified as dropout, graduate, enrolled.
 - **Dropout** (binary): Whether or not a student dropped out of university; numerically encoded. 
 
@@ -824,7 +824,7 @@ data3 <- subset(data2, select = -c(U_Credited1, U_Enrolled1, U_Evaluated1, U_App
 
 # Model Development 
 
-The purpose of this portion of the report is to use machine learning methods to build, select, and cross-validate regression models that accurately predicts university students' academic outcomes. First, I will explore whether macroeconomic factors contribute to predicting student grades through linear regression modeling. Then, I will consider models to predict whether or not a student will dropout of their university education. 
+The purpose of this portion of the report is to use machine learning methods to build, select, and cross-validate regression models that accurately predict university students' academic outcomes. First, I will explore whether macroeconomic factors contribute to predicting student grades through linear regression modeling. Then, I will consider models to predict whether or not a student will drop out of their university education. 
 
 ## Linear Regression Model to Predict Second-Semester Grades 
 
@@ -936,7 +936,7 @@ $$
 ### Discussion
 This model includes both unemployment rate and inflation rate, so macroeconomic factors appear to have some predictive influence on a students' grades and thus may be considered in machine learning models to predict academic performance. 
 
-However, this model is limited due to the dataset; the majority of features in this dataset are categorical and/or not conducive to linear regression modeling. The few continuous features included may not be optimal for predicting students' average grades. 
+However, this model is limited due to the dataset; the majority of features in this dataset are categorical or otherwise not conducive to linear regression modeling. The few continuous features included may not be optimal for predicting students' average grades. 
 
 ```{r final5, results='hide'}
 Subset2_5$Predicted <- 0.7991693 + 0.6692239*Subset2_5$Grade1 + 0.0023252*Subset2_5$Inflation + 0.0028986*Subset2_5$Unemployment
@@ -981,7 +981,7 @@ ggplot(plot_data, aes(x = Actual, y = Predicted)) +
 
 In this section, I develop a logistic regression model to predict the binary outcome of whether a student will drop out of their course of study based on relevant features in the dataset. 
 
-I begin by splitting the data into three portions for training (80%) validation (15%), and testing (5%). 
+I begin by splitting the data into three portions for training (80%), validation (15%), and testing (5%). 
 
 ```{r subsetting_data3}
 # Set a seed for reproducibility
@@ -1004,11 +1004,9 @@ Subset3_5  <- data3[indices[(size_80 + size_15 + 1):n], ]
 
 ### Model Selection
 
-To begin reducing dimensional, I consider all features using step-wise selection, which returns 16 features that may be relevant in predicting student dropout status: Marital Status, Application Mode, Application Order, Course of Study, Day or Evening Attendance Mother's Qualification, Mother's Occupation, Tuition Status, Gender, Scholarship, Age, International Student, Unemployment Rate, Average Grade, and Approved Curricular Units. 
+To begin reducing dimensionality in the model, I consider all features using step-wise selection, which returns 16 features that may be relevant in predicting student dropout status: Marital Status, Application Mode, Application Order, Course of Study, Day or Evening Attendance, Mother's Qualification, Mother's Occupation, Tuition Status, Gender, Scholarship, Age, International Student, Unemployment Rate, Average Grade, and Approved Curricular Units. 
 
-I proceed by eliminating features one at a time and comparing the resulting and original models' ROC curves to determine which features add to the model's predictive accuracy. 
-
-Below is a brief summary of three of the candidate models and a comparison of their ROC curves. 
+I proceed by eliminating features one at a time and comparing the resulting and original models' ROC curves to determine which features add to the model's predictive accuracy. Below is a brief summary of three of these candidate models and a comparison of their ROC curves. 
 
 - **Model 1**: All relevant features (for comparison purposes).
 - **Model 2**: This model includes five of the most relevant features (determined by process of elimination from Model 1): Tuition Status, Average Grade, Approved Curricular Units, and Course of Study. 
@@ -1134,7 +1132,7 @@ ggplot(roc_data, aes(x = FPR, y = TPR, color = Model, group = Model)) +
   geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray")  # Add diagonal reference line
 ```
 
-To evaluate the models, I look at the area under the ROC curve. Model 1 has the highest area under the curve (0.8962) followed by Model 2 (0.8762) and Model 3 (0.8708). For the sake of model simplicity and reduced dimensionality, I will proceed with Model 2.
+To evaluate the models, I look at the area under the ROC curve. Model 1 has the highest area under the curve (0.8962), followed by Model 2 (0.8762) and Model 3 (0.8708). For the sake of model simplicity and reduced dimensionality, I will proceed with Model 2.
 
 ```{r AUC}
 # Initialize a list to store AUC values
@@ -1149,7 +1147,7 @@ for (model in models) {
 
 ### Cross Validation
 
-In the next phase, I deploy cross-validation techniques. I first combine my reserved 15% dataset with the 80% dataset before subsetting them into six datasets. I will use this six datasets to cross-validate and test my logistic regression model and determine the optimal cutoff across six phases. 
+Next, I deploy cross-validation techniques to find the optimal cutoff for the model. I first combine my reserved 15% dataset with the 80% dataset before subsetting them into six datasets. I use these six datasets to cross-validate and test my logistic regression model in six phases. 
 
 ```{r subset3_phase2}
 Subset3_80_edited <- subset(Subset3_80, select = c(Tuition, avg_grade_transformed, AppUnit, Course, Dropout))
@@ -1376,7 +1374,7 @@ $$
 
 ### Discussion
 
-This model's proven predictive accuracy may underperform that of a higher-dimensional model, but the model's simplicity positions it for practicality in real-world applications. The model benefits from capturing diverse features that measure different factors contributing to student success, including those related to the student's financial status as well as their academic pursuits and performance.
+This model's proven predictive accuracy may underperform that of a higher-dimensional model, but the model's simplicity positions it for practicality in real-world applications. The model benefits from capturing diverse features that measure different factors contributing to student success, including those related to the student's financial status as well as their academic pursuits and performance. This model can help flag students at risk of dropout by considering factors such as whether they are struggling academically or financially, or even whether they may benefit from a different course of study. Universities could potentially use this information to better understand and support their students' needs.  
 
 #  Conclusion
 
@@ -1384,7 +1382,7 @@ Many factors influence students' academic outcomes and thus models to predict th
 
 The next recommended step would be to further evaluate the performance of the predictive models outlined in this report and address any bias perpetuated by the models. 
 
-Improving predictive models of students' academic outcomes gives higher education institutions more information to inform their decisions about where to focus support for students. Ultimately, this can help mitigate dropout rates and elevate higher education success. 
+Improving predictive models of students' academic outcomes gives higher education institutions more information to make decisions about where to focus their resources and student support. Ultimately, an accurate and unbiased predictive model of student outcomes can help mitigate dropout rates and elevate higher education success. 
 
 #  References 
 
