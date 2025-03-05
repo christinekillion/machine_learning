@@ -1,0 +1,1393 @@
+---
+title: "Evaluating Predictive Models of University Student's Academic Outcomes"
+author: "Christine Killion"
+date: "March 5, 2025"
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: no
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 22px;
+  font-weight: bold;
+  color: #ac1f67;
+  text-align: center;
+  font-family: sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: strong;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 12px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: normal;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: sans-serif;
+    color: black;
+    text-align: center;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("palmerpenguins")) {
+   install.packages("palmerpenguins")
+library(palmerpenguins)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("naniar")) {
+   install.packages("naniar")
+library(naniar)
+}
+if (!require("pool")) {
+   install.packages("pool")
+library(pool)
+}
+if (!require("DBI")) {
+   install.packages("DBI")
+library(DBI)
+}
+if (!require("RMySQL")) {
+   install.packages("RMySQL")
+library(RMySQL)
+}
+if (!require("randomForest")) {
+   install.packages("randomForest")
+library(randomForest)
+}
+if (!require("ggiraph")) {
+   install.packages("ggiraph")
+library(ggiraph)
+}
+if (!require("highcharter")) {
+   install.packages("highcharter")
+library(highcharter)
+}
+if (!require("broom")) {
+   install.packages("broom")
+library(broom)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("ggplot2")) {
+   install.packages("ggplot2")
+library(ggplot2)
+}
+if (!require("dplyr")) {
+   install.packages("dplyr")
+library(dplyr)
+}
+if (!require("gridExtra")) {
+   install.packages("gridExtra")
+library(gridExtra)
+}
+if (!require("tidyr")) {
+   install.packages("tidyr")
+library(tidyr)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("caret")) {
+   install.packages("caret")
+library(caret)
+}
+if (!require("MASS")) {
+   install.packages("MASS")
+library(MASS)
+}
+if (!require("pROC")) {
+   install.packages("pROC")
+library(pROC)
+}
+## 
+knitr::opts_chunk$set(echo = TRUE,   # include code chunk in the output file
+                      warning = FALSE,# sometimes, you code may produce warning messages,
+                                      # you can choose to include the warning messages in
+                                      # the output file. 
+                      results = TRUE, # you can also decide whether to include the output
+                                      # in the output file.
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+
+#  Introduction
+
+The purpose of this report is to apply a machine learning approach to building regression models that predict student academic outcomes. The report draws from data and research by the authors of <em>Early Prediction of Student’s Performance in Higher Education: A Case Study</em>.<a href="#1"><sup>1</sup></a>
+
+The questions I will seek to answer in this report are two-fold: First, do macroeconomic factors have any predictive influence on a student's grades and thus whether they should be considered in machine learning models to predict student academic performance?  Secondly, what factors effectively predict whether a student drops out out of their course of study? 
+
+In this report, I use exploratory data analysis to examine the features closely correlated with student academic performance. Understanding these relationships may help inform the development of machine learning models that more accurately predict academic outcome while mitigating bias. The latter portion of the report is dedicated to using this information to develop predictive regression models for student outcomes, measured by second-semester grade average and dropout status.
+
+# Exploratory Data Analysis
+
+This dataset contains features provided by a higher education institution in Portugal and collected from various disjoint databases about students at the time of their enrollment in an undergraduate degree program. The purpose of the dataset is to predict student dropout and academic success. The features relate to student and parent demographics, socio-economic indicators, degree program, and academic performance at the end of the first and second semesters. The collected data previously underwent cleaning and numerical recoding.<a href="#2"><sup>2</sup></a>
+
+##  List of Features
+
+The dataset contains 4,424 observations and 34 feature features. 
+
+- **Marital Status** (categorical): 6 categories include single, married, widower, divorced, de facto union, or legally separated; 88.6% of students are categorized as single.
+- **Application mode** (categorical): 18 categories include information related to the student's application classifiers, such as international student, special contingent, special age category, and transfer student.
+- **Application order** (categorical): 8 categories of preferred application order between first choice and last choice.
+- **Course** (categorical): 17 categories for chosen course of study.
+- **Daytime/evening attendance** (binary): Whether a student attends during the day or in the evening; 89.08% attend during the day. 
+- **Previous Qualification** (categorical): 17 categories of highest education level, from secondary education to master's degree; 84.02% of students completed their secondary education (12th year of schooling or equivalent).
+- **Nationality** (categorical): 21 nationalities represented, 97.5% Portuguese and the remaining international students. 
+- **Mother's Qualification** and **Father's Qualification** (categorical): 29 and 34 categories of highest education level, respectively. 
+- **Mother's Occupation** and **Father's Occupation** (categorical): 32 and 46 categories of occupation, respectively. 
+- **Displaced** (binary): Whether or not a student is displaced; 54.84% of students are displaced. 
+- **Educational special needs** (binary): 1.15% of students reported educational special needs.
+- **Debtor** (binary): Whether or not a student has debt; 11.37% of students have debt.
+- **Tuition fees up to date** (binary): Whether or not a student's tuition fees are up to date; 11.93% are not up-to-date on their payments. 
+- **Gender** (binary): 64.83% of students are female 
+- **Scholarship holder** (binary): 24.84% of students hold a scholarship. 
+- **Age at enrollment** (integer): Age of the student when they are enrolled; 64.94% are 21 years old or younger. 
+- **International student** (binary): International students (i.e., not from Portugal) account for 2.49% of the sample. 
+- **Curricular Units 1st Semester** and **Curricular Units 2nd Semester** (integers): Number of curricular units **Credited**, **Enrolled**, and **Approved** for each semester. **Evaluations** encompasses the number of evaluations to curricular units in each semester, and **Without Evaluations** is the number of curricular units without evaluations in each semester. **Grade** is the average grade between 0 and 20 per semester.
+- Economic features (continuous): This dataset includes continuous features related to the **Unemployment Rate**, **Inflation Rate**, and **GDP**.
+- **Target** (categorical): A student's academic outcome: Dropout, graduate, enrolled. 
+
+```{r data}
+data <- read.csv("https://christinekillion.github.io/machine_learning/data/student-success.csv")
+
+# Change column names
+colnames(data) <- c(
+  "Marital", "Application_M", "Application_O", "Course", 
+  "Attendance", "S_Qual", "Nationality", 
+  "M_Qual", "F_Qual", "M_Occ", 
+  "F_Occ", "Displaced", "Special_Needs", "Debtor", 
+  "Tuition", "Gender", "Scholarship", "Age", 
+  "International", "U_Credited1", "U_Enrolled1",
+  "U_Evaluated1", "U_Approved1", 
+  "Grade1", "U_WO_Eval1", 
+  "U_Credited2", "U_Enrolled2", 
+  "U_Evaluated2", "U_Approved2", 
+  "Grade2", "U_WO_Eval2", 
+  "Unemployment", "Inflation", "GDP", "Target"
+)
+
+# Create random observation ID and replace 8% of the corresponding observations with missing values 
+grades1.missing.id <- sample(1:4424, 353, replace = FALSE)
+grades2.missing.id <- sample(1:4424, 354, replace = FALSE) 
+data$Grade1[grades1.missing.id] <- NA
+data$Grade2[grades2.missing.id] <- NA
+
+#Total the number of missing values per column.
+missing_per_column <- colSums(is.na(data))
+
+#Total the number of missing values in the dataset. 
+total_missing <- sum(is.na(data))
+```
+
+##  Distribution of Individual Features 
+
+This section will describe the univariate distributions of the key categorical, dichotomous, and continuous features in the dataset and analyze any potential issues for machine learning applications. 
+
+**Student Groups of Interest**
+
+There are three key groups that are underrepresented within this dataset and should be carefully considered in the development of machine learning models so as not to reproduce bias. Section 2.3 of this report explores in more detail the relationship between these groups and academic achievement. 
+
+```{r}
+# Count the number of occurrences for each category
+debtor_counts <- table(data$Debtor)
+tuition_counts <- table(data$Tuition)
+gender_counts <- table(data$Gender)
+
+# Create data frames from the counts for each category
+debtor_df <- as.data.frame(debtor_counts)
+tuition_df <- as.data.frame(tuition_counts)
+gender_df <- as.data.frame(gender_counts)
+
+# Recode binary values from numbers to categories 
+debtor_df$Var1 <- recode(debtor_df$Var1, `1` = "Debt", `0` = "No Debt")
+tuition_df$Var1 <- recode(tuition_df$Var1, `1` = "Paid", `0` = "Unpaid")
+gender_df$Var1 <- recode(gender_df$Var1, `1` = "Male", `0` = "Female")
+
+# Create the pie charts with ggplot2
+
+# Debtor Pie Chart
+pie_debtor <- ggplot(debtor_df, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") +  # Convert bar chart to pie chart
+  scale_fill_manual(values = c("#4C57B8", "#AFB1F0")) +
+  theme_void() +  # Remove background and axes
+  guides(fill = guide_legend(title = NULL)) +  # Add legend and remove title
+  ggtitle("Debtor Status")  # Remove individual title
+
+# Tuition Fees Pie Chart
+pie_tuition <- ggplot(tuition_df, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") +  # Convert bar chart to pie chart
+  scale_fill_manual(values = c("#F5A1B5", "#ac1f67")) +
+  theme_void() +  # Remove background and axes
+  guides(fill = guide_legend(title = NULL)) +  # Add legend and remove title
+  ggtitle("Tuition Fees")  # Remove individual title
+
+# Gender Pie Chart
+pie_gender <- ggplot(gender_df, aes(x = "", y = Freq, fill = Var1)) +
+  geom_bar(stat = "identity", width = 1) + 
+  coord_polar(theta = "y") +  # Convert bar chart to pie chart
+  scale_fill_manual(values = c("#E6DE3C", "#B9A520")) +
+  theme_void() +  # Remove background and axes
+  guides(fill = guide_legend(title = NULL)) +  # Add legend and remove title
+  ggtitle("Gender")  
+
+# Combine the pie charts into a grid with a centered main title
+grid.arrange(
+  pie_debtor, pie_tuition, pie_gender, 
+  ncol = 3, 
+  heights = unit(c(1, 0.1), "npc")  # Allocate space for the legends
+)
+```
+
+
+**Parental Education**
+
+This dataset contains the previous academic qualifications of the student, mother, and father. For students, 84.02% have completed secondary education. The parental qualification distributions do not reflect that of the students: There is a wider range of educational categories for each of the parent groups (likely due to the disparate sources of data). When recoded and grouped into three main categories (secondary education, higher education, and other), the distribution of parent qualifications in the dataset indicates that most of the parent qualifications fall into the "other" category. 
+
+**Grade Distribution**
+
+The grade features for each semester contain both missing values and values of zero. When grades of zero are excluded, the grade distributions are approximately normally distributed. Data imputation could replace the missing and zero values, or another binary feature can be created to retain the information of students with a grade of zero for each semester.
+
+##  Relationship Between Features
+
+This section examines the relationships between key categorical and numerical features in the dataset. 
+
+**Grades and Student Financials**
+
+A minority of students in the dataset have debt or unpaid tuition fees. The distribution of average grades, when stratified by debt status and also by tuition status, show that the students in the minority for these categories appear to have a lower grade distribution. At the 0.05 significance level, there is sufficient evidence to conclude that the mean average grades differ significantly between these majority and minority groups. Removing or imputing grade values of zero is recommended before proceeding with modeling. 
+
+<center><span style="font-size: 18px; color: #ac1f67;">**Are the Student's Tuition Fees Up to Date?**</span></center>
+```{r boxplottuition, echo=FALSE}
+col1 = c("#0C7BDC", "#FFC20A")
+
+# Set up layout for the boxplots
+par(mfrow = c(1, 2))  # 1 rows, 2 columns
+
+boxplot(data$Grade1 ~ data$Tuition, 
+        col = col1,
+        main = "First Semester",
+        xlab = " ",
+        ylab = "Average Grade",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9,
+        xaxt = "n")   # Smaller font size for axis titles
+# Customizing x-axis labels 
+axis(1, at = c(1, 2), labels = c("No", "Yes"), cex.axis = 0.9)
+
+boxplot(data$Grade2 ~ data$Tuition, 
+        col = col1,
+        main = "Second Semester",
+        xlab = " ",
+        ylab = " ",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9,
+        xaxt = "n")    
+
+# Customizing x-axis labels 
+axis(1, at = c(1, 2), labels = c("No", "Yes"), cex.axis = 0.9)
+```
+
+**Grades and Gender**
+
+Male students, accounting for 35.17% of the dataset, appear to achieve a lower average grade distribution. Removing or imputating grade values of zero is recommended before modeling. 
+
+<center><span style="font-size: 18px; color: #ac1f67;">**Distribution of Average Grades by Gender**</span></center>
+```{r boxplotgender, echo=FALSE}
+
+col1 = c("#0C7BDC", "#FFC20A")
+
+# Set up layout for the boxplots
+par(mfrow = c(1, 2))  # 1 rows, 2 columns
+
+boxplot(data$Grade1 ~ data$Gender, 
+        col = col1,
+        main = "First Semester",
+        xlab = " ",
+        ylab = "Average Grade",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9,
+        xaxt = "n")  
+# Customizing x-axis labels 
+axis(1, at = c(1, 2), labels = c("Female", "Male"), cex.axis = 0.9)
+
+boxplot(data$Grade2 ~ data$Gender, 
+        col = col1,
+        main = "Second Semester",
+        xlab = " ",
+        ylab = " ",
+        cex.axis = 0.9,  # Smaller font size for axis labels
+        cex.lab = 0.9,
+        xaxt = "n") # Smaller font size for axis titles
+
+# Customizing x-axis labels 
+axis(1, at = c(1, 2), labels = c("Female", "Male"), cex.axis = 0.9)
+```
+
+**Grades and Curricular Units**
+
+This dataset includes multiple features measuring credits for each semester: number of curricular units credited, enrolled, and approved. A significant number of the credited features for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete. For this reason, I might consider only including approved curricular units as a potential feature in the model. 
+
+Further, note that when approved curricular unit is grouped and compared to student grades, it appears that students with between 4 and 8 curricular units approved achieve significantly higher grades than those with fewer than 4 and slightly higher grades on average than those more than 8. (Note that the number of evaluations to curricular units follows a similar trend).
+
+This indicates that curricular units may be a significant feature in predicting student academic outcomes. The features related to curricular units will need to be engineered to reduce dimensionality and prepare them for modeling. 
+
+```{r credits_approved_grouped}
+# Create Unit_Group1 based on U_Approved1
+data$Unit_Group1 <- cut(data$U_Approved1, 
+                        breaks = c(-Inf, 0, 3, 8, Inf), 
+                        labels = c("0", "1-3", "4-8", "9+"),
+                        right = TRUE)
+
+# Create Unit_Group2 based on U_Approved2
+data$Unit_Group2 <- cut(data$U_Approved2, 
+                        breaks = c(-Inf, 0, 3, 8, Inf), 
+                        labels = c("0", "1-3", "4-8", "9+"),
+                        right = TRUE)
+```
+
+```{r grade_credits_boxplot}
+col2 = c("#FFC20A", "#0C7BDC", "#ac1f67")
+
+# Filter out "0" group from both Unit_Group1 and Unit_Group2
+data_filtered1 <- data[data$Unit_Group1 != "0", ]
+data_filtered2 <- data[data$Unit_Group2 != "0", ]
+
+# Set up layout for the boxplots
+par(mfrow = c(1, 2))  # 1 row, 2 columns
+
+# Create the first boxplot for the first semester, excluding "0" group
+boxplot(data_filtered1$Grade1 ~ data_filtered1$Unit_Group1, 
+        col = col2,
+        main = "First Semester",
+        xlab = " ",
+        ylab = "Average Grade",
+        cex.axis = 0.7,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+
+# Create the second boxplot for the second semester, excluding "0" group
+boxplot(data_filtered2$Grade2 ~ data_filtered2$Unit_Group2,
+        col = col2,
+        main = "Second Semester",
+        xlab = " ",
+        ylab = " ",
+        cex.axis = 0.7,  # Smaller font size for axis labels
+        cex.lab = 0.9)   # Smaller font size for axis titles
+```
+
+# Feature Engineering 
+
+What follows is a summary of the steps taken to engineer the key features in the dataset in order to create a simpler model with improved predictive accuracy. The feature engineering in this report will focus on the features related to academic performance rather than student demographics. 
+
+In this report, I will begin by analyzing and addressing the missing values in the dataset and comparing the effectiveness of various imputation methods. I will then proceed to addressing issues with the key features, including combining and transforming grade features to normalize the distribution and merging information about curricular units to improve interpretability. 
+
+```{r recode_data}
+# Create random observation ID and replace 8% of the corresponding observations with missing values 
+grades1.missing.id <- sample(1:4424, 353, replace = FALSE)
+grades2.missing.id <- sample(1:4424, 354, replace = FALSE) 
+data$Grade1[grades1.missing.id] <- NA
+data$Grade2[grades2.missing.id] <- NA
+
+# A "blank" answer for parent occupation is encoded as 13. Recode it as missing. 
+data <- data %>%
+  mutate(M_Occ = ifelse(M_Occ == 13, NA, M_Occ))
+
+data <- data %>%
+  mutate(F_Occ = ifelse(F_Occ == 13, NA, F_Occ))
+
+# Check for missing values in each column
+invisible(colSums(is.na(data)))
+```
+
+## Missing Values  
+
+The dataset contains 4,424 observations and 34 feature features. Among these, two numerical features have missing values: average grade for the first semester, which has 353 missing values, and average grade for the second semester, which has 354 missing values. I assume these values are missing at random since there does not appear to be a pattern to their missingness. 
+
+The first and second semester grade features have bimodal distributions due to the quantity of zero grade values. To address this, I will treat the zeros as missing values that could be due to students missing an exam or another factor. There are 665 zeros for first semester grade averages and 793 for the second semester. However, because a grade of zero may be relevant for predicting the target feature (i.e., classifying student outcomes into graduate, dropout, enrolled), I capture this information about zero grades for each semester in new binary features Zero1 and Zero2. Note that imputating zero grade values also addresses some of the gender bias in the data, which is highlighted in Section 2.4.3. 
+
+```{r grade_of_zero}
+# Create the Zero1 feature (1 if Grade1 is 0, otherwise 0, including NAs as 0)
+data$Zero1 <- ifelse(!is.na(data$Grade1) & data$Grade1 == 0, 1, 0) 
+
+# Create the Zero2 feature (1 if Grade2 is 0, otherwise 0, including NAs as 0)
+data$Zero2 <- ifelse(!is.na(data$Grade2) & data$Grade2 == 0, 1, 0) 
+```
+
+```{r replace_zeros}
+# Replace 0 values with NA in Grade1 and Grade2
+data$Grade1[data$Grade1 == 0] <- NA
+data$Grade2[data$Grade2 == 0] <- NA
+```
+
+### Replacement Imputation for Categorical Features
+
+Two categorical features in this dataset have missing values: mother's occupation (17 missing) and father's occupation (19 missing).
+
+Since the missing values for mother's and father's occupation account for less than 0.5% of each feature, I use the single imputation method of mode replacement. The mode for both mother's and father's occupation is "Unskilled Workers" (encoded as "10"). 
+
+```{r}
+invisible(tabulate(data$M_Occ))
+invisible(tabulate(data$F_Occ))
+
+data <- data %>%
+  mutate(M_Occ = ifelse(is.na(M_Occ), 10, M_Occ))
+
+data <- data %>%
+  mutate(F_Occ = ifelse(is.na(F_Occ), 10, F_Occ))
+```
+
+### Regression-based Imputation for Numerical Features
+
+In this section, I will create a random regression imputation model for the continuous response feature second semester grades and compare the results to simple linear regression imputation. Note that grade average in the first semester and second semester have a positive linear relationship, thus I use the simple Grade2~Grade1 linear regression model for imputation. 
+
+```{r imp_reg}
+pred.mdl = lm(Grade2~Grade1, data = data)
+newdata = data[is.na(data$Grade2),]
+pred.y = predict(pred.mdl, newdata = newdata)
+m0 = sum(is.na(data$Grade2))      # total number of missing values
+pred.resid = resid(pred.mdl)    # residual
+pred.yrand = pred.y + sample(pred.resid, m0, replace = TRUE)
+
+# Create a plot 
+plot(data$Grade1, data$Grade2, main = "Comparing Imputation Methods: Regression", xlab = "First Semester", ylab = "Second Semester", col = "gray")
+
+# plot a regression line 
+abline(pred.mdl, col = "gray", lty = 2, lwd = 2)
+
+# Plot points  
+points(newdata$Grade1, pred.yrand, pch = 19, col = rgb(12/255, 123/255, 220/255, alpha = .8)) 
+points(newdata$Grade1, pred.y, pch = 19, col = rgb(172/255, 31/255, 103/255, alpha = .8)) 
+
+# Add the legend 
+legend("topleft", 
+       legend = c("Regression imputation", "Random regression imputation", "Original datapoints"),
+       col = c(rgb(172/255, 31/255, 103/255, alpha = 1), rgb(12/255, 123/255, 220/255, alpha = 1), rgb(128/255, 128/255, 128/255, alpha = .5)),
+       pch = c(19, 19, 1), 
+       xpd = TRUE, 
+       inset = c(.1, .1),   # Adjust inset 
+       cex = 0.6)             # Smaller font size (default is 1)
+```
+
+### Multiple Imputation
+
+I perform multiple imputation for grades by chained equations through the MICE package using predictive mean matching for the grade features, which produces a close fit with the data. 
+
+```{r mice, results='hide'}
+#create a new dataframe to test MICE algorithm 
+grades <- data
+
+# Use Predictive Mean Matching (PMM) for the continuous features to perform MICE imputation
+imputed_data1 <- mice(grades, method = "pmm", m = 4, maxit = 5, seed = 14)
+
+#Fit model to imputed dataset
+model_imp_2 <- with(imputed_data1, lm(grades$Grade2 ~ grades$Grade1))
+
+#Combine parameter estimates
+pooled_results2 <- pool(model_imp_2) 
+
+# Summarize results
+invisible(summary(pooled_results2))
+
+# View the imputed data (completed dataset)
+completed_data <- complete(imputed_data1)
+
+# Add a new column to differentiate original vs imputed data
+grades$Data_Type <- "Original"
+completed_data$Data_Type <- "Imputed"
+
+# Combine original and imputed data into one data frame
+combined_data <- rbind(
+  data.frame(Grade1 = grades$Grade1, Grade2 = grades$Grade2, Data_Type = grades$Data_Type),
+  data.frame(Grade1 = completed_data$Grade1, Grade2 = completed_data$Grade2, Data_Type = completed_data$Data_Type)
+)
+
+# Reshape the data from wide to long format for ggplot
+long_data <- gather(combined_data, key = "Grade_Type", value = "Grade_Value", Grade1, Grade2)
+
+# Plot a layered density plot for Grade1 and Grade2
+ggplot(long_data, aes(x = Grade_Value, fill = Data_Type, color = Data_Type)) +
+  geom_density(alpha = 0.2) +  # Add density curves with transparency
+  facet_wrap(~Grade_Type, scales = "free", ncol = 2) +  # Facet for Grade1 and Grade2
+  labs(title = "Comparison of Original and Imputed Data",
+       x = "Grade Value", y = "Density") + 
+  scale_fill_manual(values = c("Original" = "#0C7BDC", "Imputed" = "#FFC20A")) +
+  scale_color_manual(values = c("Original" = "#0C7BDC", "Imputed" = "#FFC20A")) +
+  theme_minimal()  # Apply minimal theme
+```
+
+## Feature Engineering 
+
+In this section, I will address skewness and other potential issues in key features and apply transformation methods to improve feature distribution and prepare the data for modeling. 
+
+### Feature Transformation
+
+I create a new feature that averages first and second semester grades to combine information from both features and reexamine the distribution. 
+
+```{r new_grades}
+data2 <- completed_data 
+
+data2$avg_grade <- (data2$Grade1 + data2$Grade2)/2 # create grade average feature
+```
+
+To transform the grade features into more normalized distributions, I perform Box-Cox transformations. Following imputation, all values are positive and there are no missing or zero values.
+
+```{r boxcox_grade_1, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+# Open a null graphics device to prevent plotting
+pdf(NULL)
+
+# Fit a simple linear model   
+bc_model_grade1 <- lm(Grade1 ~ 1, data = data2)  
+
+# Perform the Box-Cox transformation
+boxcox_result_g1 <- boxcox(bc_model_grade1, lambda = seq(0, 1, by = 0.1))
+
+# Identify the optimal lambda value
+optimal_lambda_g1 <- boxcox_result_g1$x[which.max(boxcox_result_g1$y)]
+cat("Optimal Lambda:", optimal_lambda_g1, "\n")
+
+# Apply the Box-Cox transformation
+if (optimal_lambda_g1 == 0) {
+  data2$g1_transformed <- log(data2$Grade1)  # Log transformation for lambda = 0
+} else {
+  data2$g1_transformed <- (data2$Grade1^optimal_lambda_g1 - 1) / optimal_lambda_g1
+}
+
+# Close the null graphics device
+dev.off()
+```
+
+```{r boxcox_grade_2, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+# Open a null graphics device to prevent plotting
+pdf(NULL)
+
+# Fit a simple linear model   
+bc_model_grade2 <- lm(Grade2 ~ 1, data = data2)  
+
+# Perform the Box-Cox transformation
+boxcox_result_g2 <- boxcox(bc_model_grade2, lambda = seq(0, 1, by = 0.1))
+
+# Identify the optimal lambda value
+optimal_lambda_g2 <- boxcox_result_g2$x[which.max(boxcox_result_g2$y)]
+cat("Optimal Lambda:", optimal_lambda_g2, "\n")
+
+# Apply the Box-Cox transformation
+if (optimal_lambda_g2 == 0) {
+  data2$g2_transformed <- log(data2$Grade2)  # Log transformation for lambda = 0
+} else {
+  data2$g2_transformed <- (data2$Grade2^optimal_lambda_g2 - 1) / optimal_lambda_g2
+}
+
+# Close the null graphics device
+dev.off()
+```
+
+```{r boxcox_avg_grade, echo=FALSE, results='hide', message=FALSE, warning=FALSE}
+# Open a null graphics device to prevent plotting
+pdf(NULL)
+
+# Fit a simple linear model   
+bc_model <- lm(avg_grade ~ 1, data = data2)  
+
+# Perform the Box-Cox transformation
+boxcox_result <- boxcox(bc_model, lambda = seq(0, 1, by = 0.1))
+
+# Identify the optimal lambda value
+optimal_lambda <- boxcox_result$x[which.max(boxcox_result$y)]
+cat("Optimal Lambda:", optimal_lambda, "\n")
+
+# Apply the Box-Cox transformation
+if (optimal_lambda == 0) {
+  data2$avg_grade_transformed <- log(data2$avg_grade)  # Log transformation for lambda = 0
+} else {
+  data2$avg_grade_transformed <- (data2$avg_grade^optimal_lambda - 1) / optimal_lambda
+}
+# Close the null graphics device
+dev.off()
+
+# Reshape data for ggplot
+dl_boxplot_grades <- data.frame(
+  Value = c(data2$avg_grade, data2$avg_grade_transformed),
+  Type = rep(c("Original", "Transformed"), each = nrow(data))
+)
+
+# Plot density comparison
+ggplot(dl_boxplot_grades, aes(x = Value, fill = Type)) +
+  geom_density(alpha = 1) +
+  labs(title = "Comparison of Original and Box-Cox Transformed Distributions",
+       x = "Value",
+       y = "Density") +
+  theme_minimal() +
+  scale_fill_manual(values = c("Original" = "#0C7BDC", "Transformed" = "#FFC20A"))
+```
+
+I also combine information about zero grades into a new feature called "Zero." Note that I captured this information when I created the binary features Zero1 and Zero2 before imputing for grades of zero. 
+
+```{r}
+data2$Zero <- data2$Zero1 + data2$Zero2
+```
+
+Lastly, I recode the Target feature to be numeric and create a binary Dropout feature based on Target that indicates whether a student is recorded to have dropped out of their course of study. 
+
+### Feature Grouping
+
+In this section, I will use strategies to combine and group information across key features to prepare the data for a simpler model and improve interpretability. 
+
+This dataset includes multiple features measuring curricular units for each semester, including the number of curricular units credited, enrolled, approved, and evaluated. A significant number of the credited features for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete. For this reason, I might consider only including approved curricular units as a potential feature in the model. 
+
+To simplify curricular unit features for better interpretability, I create a new feature combining approved credits for both semesters, i.e., total approved curricular units for a student's first year. I then bin the new feature into four category ranges: 
+
+- 0, which would be considered no curricular units approved for either semester
+- 1-5, which could be considered few curricular units approved 
+- 6-9, which could be considered a low but typical range of curricular units approved 
+- 10-12, which could be considered a typical range of curricular units approved
+- 13-16, which could be considered a high but typical range of curricular units
+- 17+, which could be considered the highest range of curricular units 
+
+Based on the bar chart grouping the target by approved curricular units, it appears that students with fewer approved curricular units are more likely to dropout while students with more approved curricular units are more likely to graduate. 
+
+Finally, I encode the new categorical feature approved curricular units to prepare this feature for modeling.  
+
+```{r bin_unit}
+data2$AppUnit <- (data2$U_Approved2 + data2$U_Approved1) #create a new combined approved credits 
+
+# Bin average approved units 
+data2$AppUnit <- cut(data2$AppUnit, 
+                        breaks = c(-Inf, 0, 5, 9, 12, 16, Inf), 
+                        labels = c("0", "5", "9", "12", "16", "17+"),
+                        right = TRUE)
+
+# side by side grouped bar charts 
+ggplot(data2, aes(x = AppUnit, fill = Target)) +
+  geom_bar(position = "dodge") +  # Use dodge to create side-by-side bars
+  scale_fill_manual(values = c("#FFC20A", "#0C7BDC", "#ac1f67")) +  # Custom colors
+  labs(title = "Approved Curricular Units Across Targets",
+       x = "Approved Units",
+       y = "Frequency",
+       fill = "Target Categories") +  # Label the fill (legend)
+  theme_minimal() + 
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(size = 9),  # Adjust size of x-axis labels
+    plot.title = element_text(size = 16, face = "bold"),  # Increase title size and make it bold
+    panel.grid = element_blank()  # Remove gridlines
+  ) +
+  facet_wrap(~ Target)  # Create separate bar charts for each Target category
+```
+```{r Dropout_feature}
+data2 <- data2 %>%
+  mutate(Target = recode(Target, 
+                         "Dropout" = 0, 
+                         "Enrolled" = 1, 
+                         "Graduate" = 2))
+
+data2$Dropout <- ifelse(data2$Target == 0, 1, 0)
+```
+```{r recode_AppUnit}
+data2$AppUnit <- recode(data2$AppUnit, "0" = 0, "5" = 1, "9" = 2, "12" = 3, "16" = 4, "17+" = 5)
+```
+
+
+## Feature Selection 
+
+To proceed with model building, I remove irrelevant or redundant features. Section 3.2 outlined the strategies for combining information for key features including grades and curricular units. Thus, I remove the features associated with first- and second-semester grade averages and proceed with the transformed grade average feature. Similarly, I may remove the curricular unit features and proceed with the new associated feature, which is a measure of total approved curricular units in a student's first year.
+
+What follows is a summary of the features that will be considered in developing machine learning models. For ease of reference, these have been grouped by type into student background and demographic, student financial, macroeconomic, and academic.  
+
+**Student Background and Demographic Features**
+
+- **Marital Status** (categorical): 6 numerically encoded categories include single, married, widower, divorced, de facto union, or legally separated.
+- **Application mode** (categorical): 18 numerically encoded categories include information related to the student's application classifiers, such as international student, special contingent, special age category, and transfer student.
+- **Application order** (categorical): 8 numerically encoded categories of preferred application order between first choice and last choice.
+- **Nationality** (categorical): 21 numerically encoded nationalities represented.
+- **Mother's Qualification** and **Father's Qualification** (categorical): 29 and 34 numerically encoded categories of highest education level, respectively. 
+- **Mother's Occupation** and **Father's Occupation** (categorical): 32 and 46 numerically encoded categories of occupation, respectively. 
+- **Educational special needs** (binary): Whether or not a student has educational special needs; numerically encoded. 
+- **Gender** (binary): This feature has just two categories and is numerically encoded. 
+- **Scholarship holder** (binary): Whether or not a student holds a scholarship; numerically encoded. 
+- **Age at enrollment** (integer): Age of the student when they are enrolled. 
+- **International student** (binary): Whether or not a student is international (in this case, not from Portugal); numerically encoded.
+- **Displaced** (binary): Whether or not a student is displaced; numerically encoded. 
+
+**Student Financial Features**
+
+- **Debtor** (binary): Whether or not a student has debt; numerically encoded.
+- **Tuition fees up to date** (binary): Whether or not a student's tuition fees are up to date; numerically encoded. 
+
+**Student Academic Features**
+
+- **Course** (categorical): 17 numerically encoded categories for chosen course of study.
+- **Daytime/evening attendance** (binary): Whether a student attends during the day or in the evening; numerically encoded.
+- **Previous Qualification** (categorical): 17 numerically encoded categories of highest education level, from secondary education to master's degree.
+- **Approved Curricular Units** (integer): The number of approved curricular units for the first and second semester.
+- **Target** (categorical): A student's academic outcome, numerically encoded and classified as dropout, graduate, enrolled.
+- **Dropout** (binary): Whether or not a student dropped out of university; numerically encoded. 
+
+**Macroeconomic Features** 
+
+- **Unemployment Rate** (continuous): Unemployment rate at the time of student enrollment. 
+- **Inflation Rate** (continuous): Inflation rate at the time of student enrollment.
+- **GDP** (continuous): GDP at the time of student enrollment. 
+
+```{r data3}
+# create a new dataset that removes redundant features
+data3 <- subset(data2, select = -c(U_Credited1, U_Enrolled1, U_Evaluated1, U_Approved1, Grade1, U_WO_Eval1, U_Credited2, U_Enrolled2, U_Evaluated2, U_Approved2, Grade2, U_WO_Eval2, Data_Type, Target, Zero1, Zero2, avg_grade))
+```
+
+# Model Development 
+
+The purpose of this portion of the report is to use machine learning methods to build, select, and cross-validate regression models that accurately predicts university students' academic outcomes. First, I will explore whether macroeconomic factors contribute to predicting student grades through linear regression modeling. Then, I will consider models to predict whether or not a student will dropout of their university education. 
+
+## Linear Regression Model to Predict Second-Semester Grades 
+
+First, I consider all of the continuous features within the dataset to develop a linear regression model that predicts a student's second-semester grades. These features include first-semester grades and the macroeconomic features measuring GDP, unemployment rate, and inflation rate. I use three-way data splitting for training (80%), validation (10%), and testing (5%).
+
+In the training phase, I eliminate features from the model and compare the performance in a step-wise selection. I then compare the final model with a model fitted via robust linear regression. To evaluate the models, I will run them in my validation dataset and compare their respective mean squared errors. 
+
+The candidate models are: 
+
+- **Model 1**: Second-semester average grade = 0.80203664 + 0.6675831(First-semester average grade) + 0.0030190(Unemployment) + 0.0023759(Inflation)
+- **Model 2**: Second-semester average grade = 0.6965 + 0.7091(First-semester average grade) + 0.0030(Unemployment) + 0.0022(Inflation)
+
+```{r subsetting_data_for_linear_reg}
+# create a dataset with only the relevant continuous features 
+data4 <- data2[, c("Unemployment", "GDP", "Inflation", "g1_transformed", "g2_transformed")]
+
+colnames(data4) <- c("Unemployment", "Inflation", "GDP", "Grade1", "Grade2")
+
+# Set a seed for reproducibility
+set.seed(104)
+
+# Define sample sizes
+n <- nrow(data4)  # Total number of observations
+size_80 <- round(0.80 * n)  # 80% subset
+size_15 <- round(0.15 * n)  # 15% subset
+size_5  <- n - size_80 - size_15  # Remaining 5%
+
+# Randomly shuffle row indices
+indices <- sample(n)
+
+# Assign subsets
+Subset2_80 <- data4[indices[1:size_80], ]
+Subset2_15 <- data4[indices[(size_80 + 1):(size_80 + size_15)], ]
+Subset2_5  <- data4[indices[(size_80 + size_15 + 1):n], ]
+```
+
+```{r stepwise_selection, results='hide'}
+# Fit a full linear regression model with all predictors
+g2m1 <- lm(Grade2 ~ Grade1 + GDP + Unemployment + Inflation, data = Subset2_80)
+
+# Perform stepwise selection (default is backward elimination)
+step_model1 <- step(g2m1, direction = "both")
+
+summary(step_model1)
+```
+
+```{r rlm, results='hide'}
+# Robust linear regression
+g2m3 <- rlm(Grade2 ~ Grade1 + Unemployment + Inflation, data = Subset2_80)
+
+# Summary
+summary(g2m3)
+```
+
+### Validation
+
+Next, I use a 15% subset of the dataset to validate the two models and compare their mean squared errors. I find that Model 1 has the lowest mean squared error (0.006239).
+
+```{r mse, results='hide'}
+Subset2_15$linear_model1 = 0.80203664 + 0.6675831*Subset2_15$Grade1 + 0.0030190*Subset2_15$Unemployment + 0.0023759*Subset2_15$Inflation
+
+Subset2_15$linear_model2 = 0.6965 + 0.7091*Subset2_15$Grade1 + 0.0030*Subset2_15$Unemployment + 0.0022*Subset2_15$Inflation
+
+# Get actual values
+Subset2_15$Grade2
+
+# Compute Mean Squared Error (MSE)
+MSE_m1 <- mean((Subset2_15$Grade2 - Subset2_15$linear_model1)^2)
+MSE_m2 <- mean((Subset2_15$Grade2 - Subset2_15$linear_model2)^2)
+```
+
+Next, I refit the model using my combined 80% and 15% data subsets, and find a mean squared error of 0.006683.
+
+```{r lm_refit, results='hide'}
+Subset2_15_edited <- Subset2_15[, c("Grade1", "Grade2", "Inflation", "GDP", "Unemployment")]
+Subset2_80_edited <- Subset2_80[, c("Grade1", "Grade2", "Inflation", "GDP", "Unemployment")]
+
+Subset2_15and80 <- rbind(Subset2_15_edited, Subset2_80_edited)
+  
+g2m2_refit <- lm(Grade2 ~ Grade1 + Inflation + Unemployment, data = Subset2_15and80)
+
+summary(g2m2_refit)
+
+# Get predicted values
+predicted_g2m2_values_test2 <- fitted(g2m2_refit)
+
+actual_g2_values_test2 <- Subset2_15and80$Grade2
+
+# Compute Mean Squared Error (MSE)
+MSE_g2m2_test2 <- mean((actual_g2_values_test2 - predicted_g2m2_values_test2)^2)
+```
+
+### Linear Regression Equation and Performance 
+
+I test Model 1 using the reserved 5% subsetted data, which yields a mean squared error of 0.006733 and an $R^2$ value of 0.5097. 
+
+What follows is the final linear regression equation for Model 1 and a plot visualizing its performance. The scatter plot compares actual second-semester grades with grades predicted by Model 1. 
+
+Let $Y$ = Second-semester average grade, and let: 
+
+- $X_1$ = First-semester average grade
+- $X_2$ = Unemployment Rate
+- $X_3$ = Inflation Rate 
+
+$$
+Y = 0.7991693 + 0.6692239X_1 + 0.0028986X_2 + 0.0023252X_3
+$$
+
+### Discussion
+This model includes both unemployment rate and inflation rate, so macroeconomic factors appear to have some predictive influence on a students' grades and thus may be considered in machine learning models to predict academic performance. 
+
+However, this model is limited due to the dataset; the majority of features in this dataset are categorical and/or not conducive to linear regression modeling. The few continuous features included may not be optimal for predicting students' average grades. 
+
+```{r final5, results='hide'}
+Subset2_5$Predicted <- 0.7991693 + 0.6692239*Subset2_5$Grade1 + 0.0023252*Subset2_5$Inflation + 0.0028986*Subset2_5$Unemployment
+
+predicted_g2m2_values_final <- Subset2_5$Predicted
+actual_g2_values_final <- Subset2_5$Grade2
+
+# Compute Mean Squared Error (MSE)
+MSE_g2m2_final <- mean((actual_g2_values_final - predicted_g2m2_values_final)^2)
+
+# Compute the mean of actual values
+mean_actual <- mean(actual_g2_values_final)
+
+# Compute Total Sum of Squares (SST)
+SST <- sum((actual_g2_values_final - mean_actual)^2)
+
+# Compute Residual Sum of Squares (SSE)
+SSE <- sum((actual_g2_values_final - predicted_g2m2_values_final)^2)
+
+# Calculate R-squared (R²)
+R_squared <- 1 - (SSE / SST)
+```
+
+```{r lm_performance}
+# Create a dataframe for plotting
+plot_data <- data.frame(
+  Actual = Subset2_5$Grade2,       # Actual values
+  Predicted = Subset2_5$Predicted  # Predicted values
+)
+
+# Create the scatter plot
+ggplot(plot_data, aes(x = Actual, y = Predicted)) +
+  geom_point(color = "#0C7BDC", alpha = 0.7) +  # Scatter points (blue)
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray", size = 1) +  # 45-degree line
+  labs(title = "Model Performance: Actual vs. Predicted Grades",
+       x = "Actual Second-Semester Grades",
+       y = "Predicted Second-Semester Grades") +
+  theme_minimal()
+```
+
+## Logistic Regression Model to Predict Target Academic Outcome
+
+In this section, I develop a logistic regression model to predict the binary outcome of whether a student will drop out of their course of study based on relevant features in the dataset. 
+
+I begin by splitting the data into three portions for training (80%) validation (15%), and testing (5%). 
+
+```{r subsetting_data3}
+# Set a seed for reproducibility
+set.seed(104)
+
+# Define sample sizes
+n <- nrow(data3)  # Total number of observations
+size_80 <- round(0.80 * n)  # 80% subset
+size_15 <- round(0.15 * n)  # 15% subset
+size_5  <- n - size_80 - size_15  # Remaining 5%
+
+# Randomly shuffle row indices
+indices <- sample(n)
+
+# Assign subsets
+Subset3_80 <- data3[indices[1:size_80], ]
+Subset3_15 <- data3[indices[(size_80 + 1):(size_80 + size_15)], ]
+Subset3_5  <- data3[indices[(size_80 + size_15 + 1):n], ]
+```
+
+### Model Selection
+
+To begin reducing dimensional, I consider all features using step-wise selection, which returns 16 features that may be relevant in predicting student dropout status: Marital Status, Application Mode, Application Order, Course of Study, Day or Evening Attendance Mother's Qualification, Mother's Occupation, Tuition Status, Gender, Scholarship, Age, International Student, Unemployment Rate, Average Grade, and Approved Curricular Units. 
+
+I proceed by eliminating features one at a time and comparing the resulting and original models' ROC curves to determine which features add to the model's predictive accuracy. 
+
+Below is a brief summary of three of the candidate models and a comparison of their ROC curves. 
+
+- **Model 1**: All relevant features (for comparison purposes).
+- **Model 2**: This model includes five of the most relevant features (determined by process of elimination from Model 1): Tuition Status, Average Grade, Approved Curricular Units, and Course of Study. 
+- **Model 3**: This model is the simplest model of the three and includes only Average Grade, Approved Curricular Units, and Tuition Status.
+
+```{r model1, results='hide'}
+m1 <- glm(Dropout ~ Marital + Application_M + Application_O + 
+    Course + Attendance + M_Qual + M_Occ + Tuition + 
+    Gender + Scholarship + Age + International + Unemployment + 
+    avg_grade_transformed + Zero + AppUnit, data = Subset3_80, family = binomial)
+
+summary(m1)
+
+# Get predicted values
+Subset3_80$Model1 <- fitted(m1)
+```
+
+```{r model2, results='hide'}
+
+m2 <- glm(Dropout ~ Tuition + avg_grade_transformed + AppUnit + Course, data = Subset3_80, family = binomial)
+
+summary(m2)
+
+# Get predicted values
+Subset3_80$Model2 <- fitted(m2)
+```
+
+```{r model3, results='hide'}
+m3 <- glm(Dropout ~ avg_grade_transformed + AppUnit + Tuition, data = Subset3_80, family = binomial)
+
+summary(m3)
+
+# Get predicted values
+Subset3_80$Model3 <- fitted(m3)
+```
+
+```{r}
+# Select necessary columns
+loop3_80 <- subset(Subset3_80, select = c(Dropout, Model1, Model2, Model3))
+
+# Define cutoff thresholds
+cutoffs <- seq(0, 1, by = 0.05)
+
+# Initialize a list to store confusion matrices
+conf_matrices <- list()
+
+# Models to process
+models <- c("Model1", "Model2", "Model3")
+
+# Loop through models
+for (model in models) {
+  
+  # Create cutoff features dynamically
+  for (c in cutoffs) {
+    col_name <- paste0("cutoff_", model, "_", c)  # Generate column name
+    loop3_80[[col_name]] <- ifelse(loop3_80[[model]] > c, 1, 0)  # Apply cutoff
+  }
+  
+  # Loop through each cutoff threshold to compute confusion matrix
+  for (c in cutoffs) {
+    col_name <- paste0("cutoff_", model, "_", c)  # Dynamic column name
+    
+    # Initialize confusion matrix counters
+    TP <- sum(loop3_80$Dropout == 1 & loop3_80[[col_name]] == 1)
+    FP <- sum(loop3_80$Dropout == 0 & loop3_80[[col_name]] == 1)
+    TN <- sum(loop3_80$Dropout == 0 & loop3_80[[col_name]] == 0)
+    FN <- sum(loop3_80$Dropout == 1 & loop3_80[[col_name]] == 0)
+    
+    # Store confusion matrix for this cutoff and model
+    conf_matrices[[col_name]] <- matrix(c(TP, FP, FN, TN), nrow = 2, byrow = TRUE,
+                                        dimnames = list("Actual" = c("Positive", "Negative"),
+                                                        "Predicted" = c("Positive", "Negative")))
+  }
+}
+```
+
+```{r ROC_curve}
+# Create an empty data frame to store ROC values for each model
+roc_data <- data.frame(
+  Model = character(),
+  Cutoff = numeric(),
+  FPR = numeric(),
+  TPR = numeric()
+)
+
+# Loop through models and calculate FPR & TPR
+for (model in models) {
+  for (i in seq_along(cutoffs)) {
+    cutoff_name <- paste0("cutoff_", model, "_", cutoffs[i])
+    conf_matrix <- conf_matrices[[cutoff_name]]
+    
+    # Extract TP, FP, TN, FN
+    TP <- conf_matrix[1, 1]  # True Positives
+    FP <- conf_matrix[1, 2]  # False Positives
+    FN <- conf_matrix[2, 1]  # False Negatives
+    TN <- conf_matrix[2, 2]  # True Negatives
+    
+    # Compute False Positive Rate (FPR) and True Positive Rate (TPR)
+    FPR <- FP / (FP + TN)
+    TPR <- TP / (TP + FN)
+    
+    # Append to roc_data
+    roc_data <- rbind(roc_data, data.frame(Model = model, Cutoff = cutoffs[i], FPR = FPR, TPR = TPR))
+  }
+}
+
+# Convert Model column to a factor for proper legend labeling
+roc_data$Model <- factor(roc_data$Model, levels = models)
+
+# Plot ROC Curves for all three models
+ggplot(roc_data, aes(x = FPR, y = TPR, color = Model, group = Model)) +
+  geom_line(size = 1) +  # Line plot for each model
+  geom_point(size = 0) +  # Hide points for cutoffs
+  geom_text(aes(label = sprintf("%.2f", Cutoff)), vjust = -0.8, hjust = 0.8, size = 0) +  # Hide labels
+  scale_color_manual(values = c("Model1" = "#0C7BDC",
+                                "Model2" = "#FFC20A",
+                                "Model3" = "#ac1f67")) +  
+  labs(title = "ROC Curve Comparison",
+       x = "1 - Specificity",
+       y = "Sensitivity",
+       color = "Model") +
+  theme_minimal() +
+  geom_abline(slope = 1, intercept = 0, linetype = "dashed", color = "gray")  # Add diagonal reference line
+```
+
+To evaluate the models, I look at the area under the ROC curve. Model 1 has the highest area under the curve (0.8962) followed by Model 2 (0.8762) and Model 3 (0.8708). For the sake of model simplicity and reduced dimensionality, I will proceed with Model 2.
+
+```{r AUC}
+# Initialize a list to store AUC values
+auc_values <- list()
+
+# Loop through models to compute AUC
+for (model in models) {
+  roc_curve <- roc(loop3_80$Dropout, loop3_80[[model]])  # Compute ROC curve
+  auc_values[[model]] <- auc(roc_curve)  # Store AUC value
+}
+```
+
+### Cross Validation
+
+In the next phase, I deploy cross-validation techniques. I first combine my reserved 15% dataset with the 80% dataset before subsetting them into six datasets. I will use this six datasets to cross-validate and test my logistic regression model and determine the optimal cutoff across six phases. 
+
+```{r subset3_phase2}
+Subset3_80_edited <- subset(Subset3_80, select = c(Tuition, avg_grade_transformed, AppUnit, Course, Dropout))
+
+Subset3_15_edited <- subset(Subset3_15, select = c(Tuition, avg_grade_transformed, AppUnit, Course, Dropout))
+
+Subset3_95 <- rbind(Subset3_80_edited, Subset3_15_edited)
+
+colnames(Subset3_95) <- c("X1", "X2", "X3", "X4", "Dropout")
+
+set.seed(105)
+
+Subset3_95 <- Subset3_95 %>% mutate(group = sample(1:6, n(), replace = TRUE))  # Assign random groups
+
+data_list <- Subset3_95 %>% group_split(group)  # Split into 6 datasets
+
+# Extract individual datasets
+S1 <- data_list[[1]]
+S2 <- data_list[[2]]
+S3 <- data_list[[3]]
+S4 <- data_list[[4]]
+S5 <- data_list[[5]]
+S6 <- data_list[[6]]
+
+# List of datasets
+datasets <- list(S1, S2, S3, S4, S5, S6)
+
+# Generate six unique combinations, each excluding one dataset
+dataset_combinations <- list(
+  list(S1, S2, S3, S4, S5),  # Excluding S6
+  list(S2, S3, S4, S5, S6),  # Excluding S1
+  list(S1, S3, S4, S5, S6),  # Excluding S2
+  list(S1, S2, S4, S5, S6),  # Excluding S3
+  list(S1, S2, S3, S5, S6),  # Excluding S4
+  list(S1, S2, S3, S4, S6)   # Excluding S5
+)
+
+# Bind the selected datasets row-wise to create the Phase datasets
+Phase1 <- do.call(rbind, dataset_combinations[[1]]) # Excluding S6
+Phase2 <- do.call(rbind, dataset_combinations[[2]]) # Excluding S1
+Phase3 <- do.call(rbind, dataset_combinations[[3]]) # Excluding S2
+Phase4 <- do.call(rbind, dataset_combinations[[4]]) # Excluding S3
+Phase5 <- do.call(rbind, dataset_combinations[[5]]) # Excluding S4
+Phase6 <- do.call(rbind, dataset_combinations[[6]]) # Excluding S5
+```
+
+```{r optimal_cutoff}
+# Define logistic equation function
+compute_prob <- function(df) {
+  df$prob <- exp(9.49795 - 2.70573 * df$X1 - 2.56287 * df$X2 - 1.06728 * df$X3 + 0.08628 * df$X4) / 
+             (1 + exp(9.49795 - 2.70573 * df$X1 - 2.56287 * df$X2 - 1.06728 * df$X3 + 0.08628 * df$X4))
+  return(df)
+}
+
+# Define function to find optimal cutoff
+find_optimal_cutoff <- function(df) {
+  cutoffs <- seq(0, 1, by = 0.01)  # Cutoff range from 0 to 1 in steps of 0.01
+  results <- data.frame(Cutoff = cutoffs, Sensitivity = NA, Specificity = NA, YoudenIndex = NA)
+  
+  # Loop through cutoff values
+  for (i in seq_along(cutoffs)) {
+    c <- cutoffs[i]
+    
+    # Create prediction feature based on cutoff
+    df$pred <- ifelse(df$prob > c, 1, 0)
+    
+    # Compute confusion matrix
+    cm <- table(Predicted = df$pred, Actual = df$Dropout)
+    
+    # Extract True Positives (TP), False Positives (FP), True Negatives (TN), and False Negatives (FN)
+    TP <- ifelse("1" %in% rownames(cm) & "1" %in% colnames(cm), cm["1", "1"], 0)
+    FP <- ifelse("1" %in% rownames(cm) & "0" %in% colnames(cm), cm["1", "0"], 0)
+    TN <- ifelse("0" %in% rownames(cm) & "0" %in% colnames(cm), cm["0", "0"], 0)
+    FN <- ifelse("0" %in% rownames(cm) & "1" %in% colnames(cm), cm["0", "1"], 0)
+    
+    # Calculate Sensitivity (Recall) and Specificity
+    Sensitivity <- ifelse((TP + FN) > 0, TP / (TP + FN), 0)
+    Specificity <- ifelse((TN + FP) > 0, TN / (TN + FP), 0)
+    
+    # Compute Youden's Index (Sensitivity + Specificity - 1)
+    YoudenIndex <- Sensitivity + Specificity - 1
+    
+    # Store results
+    results[i, ] <- c(c, Sensitivity, Specificity, YoudenIndex)
+  }
+  
+  # Find the cutoff with the highest Youden’s Index
+  best_cutoff <- results$Cutoff[which.max(results$YoudenIndex)]
+  
+  return(best_cutoff)
+}
+
+# Store Phases in a list
+Phase_List <- list(Phase1, Phase2, Phase3, Phase4, Phase5, Phase6)
+
+# Loop through each Phase, apply logistic equation, and find optimal cutoff
+optimal_cutoffs <- c()
+
+for (i in seq_along(Phase_List)) {
+  Phase_List[[i]] <- compute_prob(Phase_List[[i]])  # Apply logistic equation
+  best_cutoff <- find_optimal_cutoff(Phase_List[[i]])  # Find optimal cutoff
+  optimal_cutoffs <- c(optimal_cutoffs, best_cutoff)  # Store optimal cutoff
+}
+```
+```{r log_red_testing}
+# Define function to compute accuracy
+compute_accuracy <- function(df, cutoff) {
+  # Apply the cutoff to generate predictions
+  df$pred <- ifelse(df$prob > cutoff, 1, 0)
+  
+  # Compute confusion matrix
+  cm <- table(Predicted = df$pred, Actual = df$Dropout)
+  
+  # Extract True Positives (TP), False Positives (FP), True Negatives (TN), and False Negatives (FN)
+  TP <- ifelse("1" %in% rownames(cm) & "1" %in% colnames(cm), cm["1", "1"], 0)
+  FP <- ifelse("1" %in% rownames(cm) & "0" %in% colnames(cm), cm["1", "0"], 0)
+  TN <- ifelse("0" %in% rownames(cm) & "0" %in% colnames(cm), cm["0", "0"], 0)
+  FN <- ifelse("0" %in% rownames(cm) & "1" %in% colnames(cm), cm["0", "1"], 0)
+  
+  # Compute accuracy: (TP + TN) / Total observations
+  total <- TP + FP + TN + FN
+  accuracy <- ifelse(total > 0, (TP + TN) / total, 0)
+  
+  return(accuracy)
+}
+
+# Define the list of testing datasets (excluded datasets from each phase)
+testing_datasets <- list(S6, S1, S2, S3, S4, S5)
+
+# Optimal cutoffs from previous results
+optimal_cutoffs <- c(0.34, 0.34, 0.39, 0.34, 0.41, 0.39)
+
+# Loop through each testing dataset, apply cutoff, and compute accuracy
+accuracy_results <- c()
+
+for (i in seq_along(testing_datasets)) {
+  testing_datasets[[i]] <- compute_prob(testing_datasets[[i]])  # Compute probability
+  accuracy <- compute_accuracy(testing_datasets[[i]], optimal_cutoffs[i])  # Compute accuracy
+  accuracy_results <- c(accuracy_results, accuracy)  # Store accuracy result
+}
+```
+
+```{r table_results}
+# Define the values
+CT <- c(0.34, 0.34, 0.39, 0.34, 0.41, 0.39)
+AT <- c(80.66, 80.61, 85.42, 82.81, 83.68, 83.22)  # As percentages
+AUCT <- c(0.8543, 0.8592, 0.8988, 0.8891, 0.8847, 0.8885)
+
+# Create a data frame
+results_table <- data.frame(
+  Phase = paste0("Phase ", 1:6),
+  Cutoff = CT,
+  Accuracy = paste0(AT, "%"),  # Format accuracy with percentage symbol
+  AUC = AUCT
+)
+
+# Print the table using kable()
+kable(results_table, title = "Model Performance Metrics for Each Phase")
+```
+
+```{r auc_test_phase}
+# Define function to compute AUC
+compute_auc <- function(df) {
+  roc_curve <- roc(df$Dropout, df$prob)  # Compute ROC curve
+  auc_value <- auc(roc_curve)  # Extract AUC
+  return(auc_value)
+}
+
+# Define the list of testing datasets (excluded datasets from each phase)
+testing_datasets <- list(S6, S1, S2, S3, S4, S5)
+
+# Loop through each testing dataset, compute AUC 
+auc_results <- c()
+
+for (i in seq_along(testing_datasets)) {
+  testing_datasets[[i]] <- compute_prob(testing_datasets[[i]])  # Compute probability
+  auc_value <- compute_auc(testing_datasets[[i]])  # Compute AUC
+  auc_results <- c(auc_results, auc_value)  # Store AUC result
+}
+```
+
+The cross-validation method yields an average optimal cutoff of 0.3683. With the remaining 5% of the data, I test the accuracy of Model 2 and find that the model is 80.54% accurate with an AUC of 0.8208. 
+
+```{r testing_log_reg}
+Subset3_5 <- subset(Subset3_5, select = c(Tuition, avg_grade_transformed, AppUnit, Course, Dropout))
+
+colnames(Subset3_5) <- c("X1", "X2", "X3", "X4", "Dropout")
+
+# Set the average optimal cutoff
+average_cutoff <- 0.3683
+
+# Compute probability for Subset3_5
+Subset3_5 <- compute_prob(Subset3_5)
+
+# Compute accuracy and AUC for Subset3_5
+accuracy_Subset3_5 <- compute_accuracy(Subset3_5, average_cutoff)
+auc_Subset3_5 <- compute_auc(Subset3_5)
+```
+
+The final model tested on the full dataset has 83.23% accuracy for predicting whether a student will drop out of their course of study based on early indicators. 
+
+```{r full_dataset_report}
+# Run the equation for the full dataset 
+data3$prob <- exp(9.49795 - 2.70573*data3$Tuition - 2.56287 *data3$avg_grade_transformed - 1.06728*data3$AppUnit + 0.08628 * data3$Course) / 
+             (1 + exp(9.49795 - 2.70573*data3$Tuition - 2.56287 *data3$avg_grade_transformed - 1.06728*data3$AppUnit + 0.08628 * data3$Course))
+
+# Compute accuracy and AUC for full dataset
+accuracy_data3 <- compute_accuracy(data3, average_cutoff)
+auc_data3 <- compute_auc(data3)
+```
+
+### Logistic Regression Equation and Performance 
+
+What follows is the Model 2 logistic regression equation, where the probability that Y=1 is the probability of student dropout. The features are defined as follows: 
+
+- $X_1$ = Tuition Fees Up to Date (Binary)
+- $X_2$ = Average Grade (First and Second Semester)
+- $X_3$ = Approved Curricular Units (First and Second Semester)
+- $X_4$ = Course of Study
+
+$$
+P(Y=1)=\frac{e^{9.49795-2.70573X_1-2.56287X_2-1.06728X_3+0.08628X_4}}{1+e^{9.49795-2.70573X_1-2.56287X_2-1.06728X_3+0.08628X_4}}
+$$
+
+### Discussion
+
+This model's proven predictive accuracy may underperform that of a higher-dimensional model, but the model's simplicity positions it for practicality in real-world applications. The model benefits from capturing diverse features that measure different factors contributing to student success, including those related to the student's financial status as well as their academic pursuits and performance.
+
+#  Conclusion
+
+Many factors influence students' academic outcomes and thus models to predict those outcomes. This report considered the prediction problem from a machine learning perspective using regression modeling. Limitations include the dataset's class bias and the need for reduced dimensionality in machine learning approaches. 
+
+The next recommended step would be to further evaluate the performance of the predictive models outlined in this report and address any bias perpetuated by the models. 
+
+Improving predictive models of students' academic outcomes gives higher education institutions more information to inform their decisions about where to focus support for students. Ultimately, this can help mitigate dropout rates and elevate higher education success. 
+
+#  References 
+
+<p id="1">1. Martins, M.V., Tolledo, D., Machado, J., Baptista, L.M.T., Realinho, V. (2021). Early Prediction of student’s Performance in Higher Education: A Case Study. In: Rocha, Á., Adeli, H., Dzemyda, G., Moreira, F., Ramalho Correia, A.M. (eds) Trends and Applications in Information Systems and Technologies. WorldCIST 2021. Advances in Intelligent Systems and Computing, vol 1365. Springer, Cham. https://doi.org/10.1007/978-3-030-72657-7_16</p>
+
+<p id="2">2. M.V.Martins, D. Tolledo, J. Machado, L. M.T. Baptista, V.Realinho. (2021). Predict Students' Dropout and Academic Success. Kaggle. Attribution 4.0 International (CC BY 4.0). https://www.kaggle.com/datasets/harshitsrivastava25/predict-students-dropout-and-academic-success/data</p>
