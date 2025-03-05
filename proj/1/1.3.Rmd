@@ -977,7 +977,7 @@ ggplot(plot_data, aes(x = Actual, y = Predicted)) +
   theme_minimal()
 ```
 
-## Logistic Regression Model to Predict Target Academic Outcome
+## Logistic Regression Model to Predict Student Dropout
 
 In this section, I develop a logistic regression model to predict the binary outcome of whether a student will drop out of their course of study based on relevant features in the dataset. 
 
@@ -1380,7 +1380,7 @@ This model's proven predictive accuracy may underperform that of a higher-dimens
 
 #  Conclusion
 
-Many factors influence students' academic outcomes and thus models to predict those outcomes. This report considered the prediction problem from a machine learning perspective using regression modeling. Limitations include the dataset's class bias and the need for reduced dimensionality in machine learning approaches. 
+Many factors influence students' academic outcomes and thus models to predict those outcomes. This report considered the prediction problem from a machine learning perspective using regression modeling. Limitations include the dataset's class bias, as discussed by the authors of <em>Early Prediction of Student’s Performance in Higher Education: A Case Study,</em><a href="#1"><sup>1</sup></a> and the need for reduced dimensionality in machine learning approaches. 
 
 The next recommended step would be to further evaluate the performance of the predictive models outlined in this report and address any bias perpetuated by the models. 
 
