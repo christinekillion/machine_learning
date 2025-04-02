@@ -1,0 +1,1443 @@
+---
+title: "Predicting Flight Delays Using Regularized Regression and Support Vector Machine Models"
+author: "Christine Killion"
+date: "April 2, 2025"
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: no
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 22px;
+  font-weight: bold;
+  color: #5a00c2;
+  text-align: center;
+  font-family: sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: strong;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 12px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: normal;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: sans-serif;
+    color: black;
+    text-align: center;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("palmerpenguins")) {
+   install.packages("palmerpenguins")
+library(palmerpenguins)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("naniar")) {
+   install.packages("naniar")
+library(naniar)
+}
+if (!require("pool")) {
+   install.packages("pool")
+library(pool)
+}
+if (!require("DBI")) {
+   install.packages("DBI")
+library(DBI)
+}
+if (!require("RMySQL")) {
+   install.packages("RMySQL")
+library(RMySQL)
+}
+if (!require("randomForest")) {
+   install.packages("randomForest")
+library(randomForest)
+}
+if (!require("ggiraph")) {
+   install.packages("ggiraph")
+library(ggiraph)
+}
+if (!require("highcharter")) {
+   install.packages("highcharter")
+library(highcharter)
+}
+if (!require("broom")) {
+   install.packages("broom")
+library(broom)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("ggplot2")) {
+   install.packages("ggplot2")
+library(ggplot2)
+}
+if (!require("dplyr")) {
+   install.packages("dplyr")
+library(dplyr)
+}
+if (!require("gridExtra")) {
+   install.packages("gridExtra")
+library(gridExtra)
+}
+if (!require("tidyr")) {
+   install.packages("tidyr")
+library(tidyr)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("caret")) {
+   install.packages("caret")
+library(caret)
+}
+if (!require("MASS")) {
+   install.packages("MASS")
+library(MASS)
+}
+if (!require("pROC")) {
+   install.packages("pROC")
+library(pROC)
+}
+if (!require("glmnet")) {
+   install.packages("glmnet")
+library(glmnet)
+}
+if (!require("pander")) {
+   install.packages("pander")
+library(pander)
+}
+if (!require("e1071")) {
+   install.packages("e1071")
+library(e1071)
+}
+## 
+knitr::opts_chunk$set(echo = TRUE,   # include code chunk in the output file
+                      warning = FALSE,# sometimes, you code may produce warning messages,
+                                      # you can choose to include the warning messages in
+                                      # the output file. 
+                      results = TRUE, # you can also decide whether to include the output
+                                      # in the output file.
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+
+#  Introduction
+
+Domestic flight delays cost the U.S. economy $32.9 billion annually, and half that cost is paid by passengers.<sup><a href="#1">1</a></sup> Delayed flights cause passengers to lose time and miss connections, and significant delays may require passenger accommodations that disrupt later flights, leading to substantial cascading costs for passengers, airlines, airports, air traffic control, government agencies, and the economy as a whole. 
+
+The inconvenience and cost to the passenger worsens depending on the magnitude of the delay, according to research from UC Berkeley and commissioned by the Federal Aviation Administration.<sup><a href="#1">1</a></sup> For instance, a 30-minute hold up may not alter a passenger's schedule, but an arrival that's 90 minutes behind schedule could cause them to miss a connection entirely or force them to cancel subsequent travel plans. 
+
+While some factors related to flight delays may only be mitigated (e.g., weather conditions), others could potentially be engineered to reduce delays, such as airport infrastructure, flight volume and traffic, and those related to operations and staffing levels. Precise and accurate predictive models for flight delays could give airlines, airports, and air traffic controllers additional insights for addressing anticipated delays and allow them to proactively adjust their schedules and operations, among other possible interventions. 
+
+This report uses a dataset of arrival flight delays with a focus on operations and aircraft readiness in weather conditions with low variation.<sup><a href="#2">2</a></sup> The purpose of this report is to develop a model that accurately predicts flight delays in minutes and another model to accurately flag flights at risk for significant delays. I will employ both regularized regression and support vector machine modeling approaches to address these two problems of flight delay prediction. 
+
+## List of Features
+
+The flight delay database used in this report originates from <em>Applied Analytics through Case Studies Using SAS and R</em> by Deepti Gupta and contains 3,593 observations and 11 features.
+
+- **Carrier** (Categorical): Two-character designators for 14 airline carriers.
+- **Distance**  (Integer): The distance between the airports in miles. This dataset contains flights with a relatively small range of distances (between 300 and 500 miles). 
+- **Flights** (Integer): The total number of flights in an airport, ranging from 30,000 to 55,000 annually.
+- **Weather** (Categorical): The weather condition ranked from 0 for mild to 10 for extreme, though this dataset only includes two rankings: 5 and 6. 
+- **Support** (Integer): The total number of support crew available, ranging from none to 222. 
+- **Baggage** (Integer): The time spent loading the baggage, ranging from 14 to 19 minutes. 
+- **Late** (Integer): The time in minutes for late-arriving aircraft of the same flight, ranging from 15 to 22 minutes. 
+- **Cleaning** (Integer): The time in minutes spent on cleaning the aircraft, ranging from 0 to 25 minutes. 
+- **Fueling** (Integer): The time in minutes spent on aircraft fueling, ranging from 13 to 36 minutes
+- **Security** (Integer): The time in minutes spent on security checking, ranging from 13 minutes to 63 minutes. 
+- **Delay** (Integer): The number of minutes the arriving flight is delayed, from zero to 180 minutes. 
+
+```{r data}
+data <- read.csv("https://christinekillion.github.io/machine_learning/data/Flight_delay-data.csv")
+
+colnames(data) <- c("Carrier", "Distance", "Flights", "Weather", "Support", "Baggage", "Late", "Cleaning", "Fueling", "Security", "Delay")
+```
+
+# Data Preparation
+
+To prepare the dataset for modeling, I will first explore and summarize key features and relationships between features. Then, I will outline the steps taken to engineer these features to prepare the data for modeling. 
+
+## Exploratory Data Analysis 
+
+<p id="2.1">This section will explore the relationships between features and recommend actions for predictive modeling.</p> 
+
+There appear to be weak positive linear relationships between the features measuring flight distance, total number of flights at the airport, baggage loading time, and lateness of arriving aircraft of the same flight. This indicates that modeling requires consideration of interaction terms. 
+
+Several features appear to have linear relationships with the dependent feature measuring the number of minutes a flight is delayed. **Figure 1** visualizes these relationships. Note that there do not appear to be significant relationships between flight delay and the features measuring the number of minutes spent cleaning, fueling, or doing security checks on the aircraft. This may indicate that the features related to number of support crew, distance traveled, and total flights at an airport may contribute more to the predictive model than those related to cleaning, fueling, and security.
+
+- **Support crew:** There appears to be a weak negative linear relationship between the total number of support crew available and the number of minutes a flight is delayed. It appears that more support crew tends to be correlated with fewer minutes delayed.
+
+- **Distance traveled:** There appears to be a weak positive linear relationship between the distance traveled and the number of minutes a flight is delayed. More distance traveled tends to be correlated with longer delays. 
+
+- **Total flights:** There appears to be a strong positive linear relationship between the total number of flights at an airport and the number of minutes a flight is delayed. The curve appears to follow an exponential pattern, though not to scale.  
+
+```{r Figure1_Linear_Relationships_With_Delay}
+# Set up a 1x3 grid layout
+par(mfrow = c(1, 3), mar = c(10, 4, 10, 0))  # Adjust margins to give more space
+
+# Plot 1: Relationship Between Flight Delay and Support Staff
+# Fit a linear regression model
+model1 <- lm(data$Delay ~ data$Support, data = data)
+
+# Scatterplot 
+plot(data$Support, data$Delay,
+     col = "#f8346b",
+     pch = 19, 
+     main = " ",
+     xlab = "Number of Support Crew",
+     ylab = "Minutes Delayed")
+
+# Add the regression line
+abline(model1, col = "black", lwd = 2)
+
+# Add a single centered heading above the plots
+mtext("Figure 1. Linear Relationships Between Flight Delay and Key Features", side = 3, line = 2, cex = 1, font = 2, adj = 0, outer = FALSE)
+
+# Plot 2: Relationship Between Flight Delay and Distance Traveled
+# Fit a linear regression model
+model2 <- lm(data$Delay ~ data$Distance, data = data)
+
+# Scatterplot 
+plot(data$Distance, data$Delay,
+     col = "#FFC20A",
+     pch = 19, 
+     main = " ",
+     xlab = "Distance Traveled",
+     ylab = " ")
+
+# Add the regression line
+abline(model2, col = "black", lwd = 2)
+
+# Plot 3: Relationship Between Flight Delay and Total Flights in Airport
+# Fit a linear regression model
+model3 <- lm(data$Delay ~ data$Flights, data = data)
+
+# Scatterplot 
+plot(data$Flights, data$Delay,
+     col = "#8e2bff",
+     pch = 19, 
+     main = " ",
+     xlab = "Total Flights",
+     ylab = " ")
+
+# Add the regression line
+abline(model3, col = "black", lwd = 2)
+
+# Reset plotting layout to default
+par(mfrow = c(1, 1))
+```
+
+There appears to be a relationship between the total volume of flights at an airport, baggage loading time, and flight delays, as illustrated by **Figure 2**. Note that the baggage feature has little variation and ranges between 14 and 19 minutes. Thus, the baggage loading time in and of itself likely does not add significantly to the flight delay, but the baggage feature may be measuring other information about the flight and the airport. For instance, it is possible that a longer baggage loading time is associated with more baggage and a larger and/or more populated flight. It is also possible that the baggage loading times of delayed flights are longer because of schedule disruptions associated with delays. For this reason, I consider adding interaction terms for baggage and flight volume to the model. 
+
+```{r Figure2_Baggage_Delay_Plot}
+# Create interactive scatterplot
+flightxdelay2 <- plot_ly(data = data, 
+               x = ~Flights, 
+               y = ~Delay, 
+               type = 'scatter', 
+               mode = 'markers', 
+               color = ~factor(Baggage),   # Color by baggage loading time
+               text = ~paste("Baggage Loading Time: ", Baggage),  # Show baggage loading time name on hover
+               hoverinfo = 'text',        # Only show 'text' on hover
+               marker = list(size = 8, opacity = 0.7))   # Increase transparency
+
+# Customize layout
+flightxdelay2 <- flightxdelay2 %>% layout(
+  title = "Figure 2. Flight Volume vs. Delay by Baggage Loading Time",
+  xaxis = list(title = "Total Flight Volume at Airport"),
+  yaxis = list(title = "Arriving Flight Delay in Minutes"),
+  legend = list(title = list(text = "Minutes Loading Baggage"))
+)
+
+# Show the plot
+flightxdelay2
+```
+
+## Feature Engineering
+
+In this section, I will review the methodology used to transform existing features and establish new features to improve predictive model performance. 
+
+### Negative Values 
+
+The feature measuring time in minutes for cleaning an aircraft contains five values below zero. These negative values may be due to data entry errors. I address them by imputing them with values of zero.  
+
+```{r Cleaning_update}
+data$Cleaning <- ifelse(data$Cleaning < 0, 0, data$Cleaning)
+```
+
+### Recoding Carrier
+
+<p id="carrier">While there does not appear to be a significant relationship between the carrier and flight delay, it is important to recode this feature before proceeding with linear regression modeling. To recode, I first rank the carriers by their frequency in the dataset and then recode the names accordingly. Below is a reference list for the Carrier_recoded feature.</p>
+
+1. United Airlines (UA)
+2. JetBlue (B6)
+3. Delta (DL)
+4. ExpressJet Airlines (EV)
+5. American Airlines (AA)
+6. American Eagle (MQ)
+7. US Airways (US)
+8. Southwest (WN)
+9. Endeavor Air (9E)
+10. Virgin America (VX)
+11. AirTran Airways (FL)
+12. Alaska (AS)
+13. Frontier (F9)
+14. Hawaiian (HA) 
+
+```{r recode_carrier}
+data <- data %>%
+  mutate(Carrier_recoded = recode(Carrier,
+                                  "UA" = 1,  # United Airlines
+                                  "B6" = 2,  # JetBlue
+                                  "DL" = 3,  # Delta
+                                  "EV" = 4,  # ExpressJet Airlines
+                                  "AA" = 5,  # American Airlines
+                                  "MQ" = 6,  # American Eagle
+                                  "US" = 7,  # US Airways
+                                  "WN" = 8,  # Southwest
+                                  "9E" = 9,  # Endeavor Air
+                                  "VX" = 10, # Virgin America
+                                  "FL" = 11, # AirTran Airways
+                                  "AS" = 12, # Alaska
+                                  "F9" = 13, # Frontier
+                                  "HA" = 14)) # Hawaiian
+```
+
+### Measuring and Categorizing Flight Delays
+
+In this section, I will examine the feature in the dataset measuring arriving flight delays in minutes and outline my methodology for defining a significant delay for classification purposes. 
+
+The U.S. Department of Transportation (DOT) began implementing a rule in 2024 that defines significant changes to a flight to be, in part, departure or arrival times that are more than three hours different from the original schedule for domestic flights.<sup><a href="#2">2</a></sup> The purpose of this definition is to create a standard defining when passengers are eligible for a refund.
+
+Similarly, in this report, I will define a cutoff time to create a binary feature measuring whether a flight is significantly delayed. This will ulitmately be the dependent feature in a model to predict the severity of a flight delay. 
+
+The dataset contains a target feature measuring flight delay in minutes, ranging from no delay (0 minutes) to a three-hour delay (180 minutes). This target feature has a symmetrical distribution, with an average delay of approximately 70 minutes. 
+
+```{r Figure3_Histogram_of_Delays}
+hist(data$Delay, 
+     main="Figure 3. Histogram of Flight Delay Data", 
+     xlab="Minutes Delayed", 
+     ylab="Frequency", 
+     col="#8e2bff", 
+     border="black")
+```
+
+This dataset contains delays of up to three hours, which is the DOT cutoff for passengers to be eligible for a refund. Since I cannot use the DOT cutoff for this dataset, I choose to use the 95th percentile of the flight delay feature (i.e., approximately 120 minutes)  to create a binary feature called Delayed_2hrs measuring whether a flight delay exceeds two hours. 
+
+```{r create_delay_90}
+data$Delayed_2hrs <- ifelse(data$Delay > 120, 1, 0)
+```
+
+### Standardizing Independent Features 
+
+The distributions for the independent numerical features appear to approximately follow a normal distribution pattern. To prepare the data for regularized regression modeling, I standardize the independent features by centering and scaling the values in section 3.
+
+# Predicting Flight Delay in Minutes 
+
+In this section, I will train five linear regression models to predict flight delays in minutes, and then compare model performance. I will begin by performing three types of regularized regression modeling: LASSO, Ridge, and Elastic Net. I will then train two support vector regression (SVR) models—one with a radial basis function (RBF) kernel and another with a linear kernel. 
+
+## Regularized Linear Regression
+
+<p id="3.1">The following section summarizes the methodology for regularized linear regression modeling. First, I consider interaction and feature selection. I then fit LASSO, Ridge, and Elastic Net regularized regression models and examine the variable selection trends through coefficient path analysis. Then, I cross-validate the results and pinpoint the optimal regularization parameter. Finally, I compare the models and provide an equation for the recommended model.</p>
+
+## Interaction and Feature Selection
+
+In this section, I explain the methodology for feature selection and handling interactions between the independent features. 
+
+I began by splitting the data into training and testing sets, with separate matrices for the independent features and the dependent feature measuring flight delay. I then fitted regularized linear regression models without interaction terms and compared the results to models fitting to include all possible two-way through 10-way interaction terms. I then fitted models that considered manually selected interaction terms, chosen based on the coefficient path analyses of the interaction and non-interaction models as well as insights gleaned from the exploratory data analysis outlined in <a href="#2.1">section 2.1</a> of this report. 
+
+The models that included all possible interaction terms did not significantly improve model performance enough to justify the computer resources required to fit such high-dimensional models. Modeling with all possible interaction terms indicated that the most significant interactions are between baggage loading time, flight volume, lateness of arriving flight, and flight distance. Thus, to balance efficiency with the need to improve model performance by including interaction terms, all possible two-way, three-way, and four-way interaction terms are included in the following regularized linear regression modeling. 
+
+This strategy improved the efficiency of the regression modeling significantly compared to using all 10 independent features and their respective 1,013 possible interaction terms. From there, the model features will be implicitly selected when fitting the regularized linear regression model and optimizing the hyperparameters. 
+
+```{r regularized_linear_regression_setup}
+set.seed(172)
+
+# Create two matrices for Xi and Y
+X <- as.matrix(data[, c("Distance", "Weather", "Flights", "Support", "Baggage", "Late", "Carrier_recoded", "Security", "Cleaning", "Fueling")])
+Y <- data$Delay
+
+### Create interaction terms ### 
+
+# only select key features to generate  interaction terms for 2-way to 4-way
+X_select <- X[, c("Distance", "Flights", "Baggage", "Late")]
+
+# Get the column names (features)
+features <- colnames(X_select)
+  
+# Initialize an empty data frame to store interaction terms
+interaction_terms <- data.frame(matrix(ncol = 0, nrow = nrow(X_select)))
+
+# generate two-way through four-way terms 
+for (degree in 2:4) {
+ combs <- combn(features, degree, simplify = FALSE)  # Generate combinations of features
+for (comb in combs) {
+ interaction_name <- paste(comb, collapse = "*")  # Create a name for the interaction term
+interaction_term <- apply(X_select[, comb], 1, prod)  # Compute the product of selected columns
+  interaction_terms[[interaction_name]] <- interaction_term  # Add interaction term to data frame
+  }
+}
+
+# Add interaction terms 
+X_int <- as.matrix(cbind(X, interaction_terms))
+
+# Split the data into training and testing sets
+train_index <- createDataPartition(Y, p = 0.8, list = FALSE)
+X_train <- X_int[train_index, ]
+X_test <- X_int[-train_index, ]
+Y_train <- Y[train_index]
+Y_test <- Y[-train_index]
+
+# Standardizing the data
+preprocess_params <- preProcess(X_train, method = c("center", "scale"))
+X_train <- predict(preprocess_params, X_train)
+X_test <- predict(preprocess_params, X_test)
+```
+
+```{r fitting_regularized_regression_model}
+## fitting the model
+fit_lasso <- glmnet(X_train, 
+                      Y_train, 
+                      alpha = 1)        # lasso regression 
+fit_ridge <- glmnet(X_train, 
+                    Y_train, 
+                    alpha = 0)          # Ridge regression
+fit_elastic_net <- glmnet(X_train, 
+                          Y_train, 
+                          alpha = 0.5)  # elastic net
+
+## cross-validation
+cv_lasso <- cv.glmnet(X_train, Y_train, alpha = 1)   # Lasso regression
+cv_ridge <- cv.glmnet(X_train, Y_train, alpha = 0)   # Ridge regression
+cv_elastic_net <- cv.glmnet(X_train, Y_train, alpha = 0.5)  # Elastic Net
+```
+
+**Figure 4a** depicts the overall coefficient path analysis trends for the three models and the optimal range for lambda. An initial analysis of the coefficient paths indicates that between the optimal log lambda values, LASSO is preferable as it retains fewer features and is thus more efficient. 
+
+**Figure 4b** provides a closer look at the coefficient path analysis for the LASSO model. At log lambda values close to zero, the LASSO model retains six features, including the number of support crew available, baggage loading time, and weather conditions, as well as three interaction terms. At a log lambda value of two, the model retains only the three interaction terms. 
+
+```{r figure4a_coefficient_path_analysis}
+# Set up the layout for three side-by-side plots
+par(mfrow=c(1,3), mar=c(5,2,7,1))
+
+# Plot coefficient path for Lasso
+plot(fit_lasso, xvar = "lambda", label = FALSE,
+     lwd = 1,
+     main = "Lasso",
+     col = rainbow(10),
+     cex.main = 0.9)
+
+# Add vertical lines at optimal lambda range
+abline(v = log(cv_lasso$lambda.min), col = "#8e2bff", lty = 4, lwd = 1)
+abline(v = log(cv_lasso$lambda.1se), col = "#f8346b", lty = 4, lwd = 1)
+
+# Add the 'min' and '1se' labels in the bottom-right of the plot
+text(x = 3, y = -3.5, 
+     labels = paste("min = ", round(cv_lasso$lambda.min, 2)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+text(x = 3, y = -4.5, 
+     labels = paste("1se = ", round(cv_lasso$lambda.1se, 2)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+
+# Plot coefficient path for Ridge
+plot(fit_ridge, xvar = "lambda", label = FALSE,
+     lwd = 1,
+     main = "Ridge",
+     col = rainbow(21),
+     cex.main = 0.9)
+
+# Add vertical lines at optimal lambda range
+abline(v = log(cv_ridge$lambda.min), col = "#8e2bff", lty = 4, lwd = 1)
+abline(v = log(cv_ridge$lambda.1se), col = "#f8346b", lty = 4, lwd = 1)
+
+# Add the 'min' and '1se' labels in the bottom-right of the plot
+text(x = 10, y = -1.75, 
+     labels = paste("min = ", round(cv_ridge$lambda.min, 2)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+text(x = 10, y = -2, 
+     labels = paste("1se = ", round(cv_ridge$lambda.1se, 2)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+
+# Plot coefficient path for Elastic Net
+plot(fit_elastic_net, xvar = "lambda", label = FALSE,
+     lwd = 1,
+     main = "Elastic Net",
+     col = rainbow(12),
+     cex.main = 0.9)
+
+# Add vertical lines at optimal lambda range
+abline(v = log(cv_elastic_net$lambda.min), col = "#8e2bff", lty = 4, lwd = 1)
+abline(v = log(cv_elastic_net$lambda.1se), col = "#f8346b", lty = 4, lwd = 1)
+
+# Add the 'min' and '1se' labels in the bottom-right of the plot
+text(x = 4, y = -2, 
+     labels = paste("min = ", round(cv_elastic_net$lambda.min, 2)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+text(x = 4, y = -3, 
+     labels = paste("1se = ", round(cv_elastic_net$lambda.1se, 2)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+
+# Add a title above all three plots
+mtext("Figure 4a. Coefficient Path Analyses", 
+      line = 5, cex = 1.2, font = 2, adj = 1.5)
+```
+
+```{r figure4b_coefficient_path_analysis}
+
+# Find the lambda value closest to log(lambda) = 0
+lambda_log0 <- 0
+lambda_values <- fit_lasso$lambda
+lambda_idx <- which.min(abs(log(lambda_values) - lambda_log0))
+lambda_at_log0 <- lambda_values[lambda_idx]
+
+# Extract the coefficientsat the specified lambda
+coef_at_lambda <- coef(fit_lasso, s = lambda_at_log0)
+
+# Create a plot for just the coefficients at log(lambda) = 0
+par(mar=c(5,4,6,3))
+plot(fit_lasso, xvar = "lambda", label = TRUE,
+     lwd = 1,
+     main = "Figure 4b. Lasso Coefficient Paths (6 or Fewer Features Retained)",
+     col = rainbow(10),
+     xlim = c(-1,3.5),
+     ylim = c(-2,11),
+     cex.main = 1)
+
+# Add vertical lines at optimal lambda range
+abline(v = log(cv_lasso$lambda.1se), col = "black", lty = 4, lwd = 1)
+
+# Add label with the value of lambda.1se
+text(log(cv_lasso$lambda.1se), 0, 
+     paste("lambda.1se = ", round(cv_lasso$lambda.1se, 2)),  # Round the value for readability
+     pos = 4, cex = 0.7, col = "black", srt = 90)
+
+# Optionally, add the coefficient values at log(lambda) = 0 to the plot
+# Here we are highlighting which variables have non-zero coefficients
+selected_features <- which(coef_at_lambda != 0)
+text(x = rep(log(lambda_at_log0), length(selected_features)),
+     y = coef_at_lambda[selected_features],
+     labels = rownames(coef_at_lambda)[selected_features],
+     col = "black", cex = 0.6, pos = 4)    
+```
+
+```{r return_names, echo=FALSE}
+# colnames(X_train)[c()]
+```
+
+The cross-validation results for the Lasso regression model indicate that the optimal hyperparameter lambda should fall between lambda.min (i.e., the minimum mean cross-validation error) and lambda.1se (i.e., the largest value of lambda with an error that falls within one standard error of lambda.min). **Figure 5** shows a plot of root mean square error and the optimal range of log lambda for minimizing cross-validation error. 
+
+```{r Figure5_RMSE_Plot_Lasso}
+# Plotting Lasso RMSE plot with lambda.min and lambda.1se values on a log scale
+par(mar=c(5,4,6,3))
+
+# Plot the Lasso RMSE plot
+plot(cv_lasso, main = "Figure 5. Lasso RMSE Plot", cex.main = 1, col = "#ff6437")
+
+# Add vertical lines at log(lambda.min) and log(lambda.1se)
+abline(v = log(cv_lasso$lambda.min), col = "#8e2bff", lty = 2)  # Line for lambda.min (log scale)
+abline(v = log(cv_lasso$lambda.1se), col = "#ff6437", lty = 2)  # Line for lambda.1se (log scale)
+
+# Add text labels for log(lambda.min) and log(lambda.1se)
+text(log(cv_lasso$lambda.min), max(cv_lasso$cvm), labels = paste("lambda.min =", round(cv_lasso$lambda.min, 4)), 
+     col = "#8e2bff", pos = 4, cex = 0.8)
+text(log(cv_lasso$lambda.1se), max(cv_lasso$cvm), labels = paste("lambda.1se =", round(cv_lasso$lambda.1se, 4)), 
+     col = "#ff6437", pos = 4, cex = 0.8)
+```
+
+**Table 1** shows the root mean square error and mean absolute error for each of the regularized linear regression models. The LASSO model performs slightly better than the Elastic Net and Ridge models. The predicted flight delays for each model are off by around nine and a half minutes on average. 
+
+```{r cross_validation_regularized_regression}
+# Extract coefficients for the best lambda
+best.lasso.lambda <- cv_lasso$lambda.min
+best.ridge.lambda <- cv_ridge$lambda.min
+best.elastic.net.lambda <- cv_elastic_net$lambda.min
+
+# Lasso Regression (L1 Regularization): 
+# CAUTION: model formula differs from the regular regression formula 
+lasso_model.opt <- glmnet(X_train, 
+                      Y_train, 
+                      alpha = 1,      # lasso regression 
+                      lambda = best.lasso.lambda)   # useser selected alpha, optimal lambda
+                                      # can be obtained through CV (see below)
+lasso_predictions.opt <- predict(lasso_model.opt, 
+                             s = best.lasso.lambda, # user selected lambda value 
+                                      # (regularization paremeter)
+                             newx = X_test)  # test data set 
+# Lasso Mean Squared Error
+lasso_mse <- mean((Y_test - lasso_predictions.opt)^2)
+# Lasso RSME
+lasso_rmse.opt <- sqrt(lasso_mse)   
+# Lasso MAE
+lasso_mae <- mean(abs(Y_test - lasso_predictions.opt))
+                                  
+# Ridge Regression (L2 Regularization)
+ridge_model.opt <- glmnet(X_train, Y_train, alpha = 0, lambda = best.ridge.lambda)
+ridge_predictions.opt <- predict(ridge_model.opt, s = best.ridge.lambda, newx = X_test)
+# Ridge Mean Squared Error
+ridge_mse <- mean((Y_test - ridge_predictions.opt)^2)
+# Ridge RSME
+ridge_rmse.opt <- sqrt(ridge_mse) 
+# Ridge MAE
+ridge_mae <- mean(abs(Y_test - ridge_predictions.opt))
+
+# Elastic Net (Combination of L1 and L2)
+elastic_net_model.opt <- glmnet(X_train, Y_train, alpha = 0.5, lambda = best.elastic.net.lambda)
+elastic_net_predictions.opt <- predict(elastic_net_model.opt, s = best.elastic.net.lambda, newx = X_test)
+# Elastic Net Mean Squared Error
+elastic_net_mse <- mean((Y_test - elastic_net_predictions.opt)^2)
+# Elastic Net RSME
+elastic_net_rmse.opt <- sqrt(elastic_net_mse)  
+# Elastic Net MAE
+elastic_net_mae <- mean(abs(Y_test - elastic_net_predictions.opt))
+```
+
+**Table 1. RMSE and MAE for Each Model**
+```{r Table1_performance_summary_reg_model}
+# Create a performance summary for RMSE for each model
+RMSE_Summary <- data.frame(
+  Model = c("Lasso", "Ridge", "ElasticNet"),
+  RMSE = c(lasso_rmse.opt, ridge_rmse.opt, elastic_net_rmse.opt),
+  MAE = c(lasso_mae, ridge_mae, elastic_net_mae)
+)
+
+# Display the summary using pander
+pander(RMSE_Summary)
+```
+
+## Support Vector Regression
+
+In this section, I will fit two models using support vector regression to address the same problem of predicting flight delays and using the same 10 independent features used in the regularized linear regression modeling. The first model will use a non-linear radial basis function (RBF) kernel and the second will use a linear kernel. I will use the same testing and training datasets from the regularized linear regression model but without interaction terms since the support vector regression modeling using RBF kernel will implicitly consider feature interaction in a high-dimensional space.  
+
+```{r svr_training}
+## use the same training and testing sets but remove interaction terms 
+X_train_svr <- X_train[, 1:10]
+X_test_svr <- X_test[, 1:10]
+
+## Set up custom cross-validation control
+tune.control <- tune.control(
+  cross = 5,  # Use 5-fold cross-validation, the default is 10-fold cross-validation
+  nrepeat = 1 # Number of repetitions (for repeated cross-validation)
+)
+#####
+# Perform grid search for hyperparameter tuning: RBF kernel is used
+tune.RBF <- tune(svm, train.x = X_train_svr, train.y = Y_train, 
+                    ranges = list(epsilon = seq(0.1, 0.5, 0.1), 
+                                  cost = c(1, 10, 100), 
+                                  gamma = c(0.01, 0.1, 1)), # Hyperparameter in RBF
+                    tunecontrol = tune.control(sampling = "cross", 
+                                               cross = 5) # 5-fold cross-validation
+                    )
+####
+# Train the final model using the best parameters
+final.RBF<- svm(X_train_svr, Y_train, 
+                   type = "eps-regression",  # Use "nu-regression" for nu-SVR
+                   kernel = "radial", 
+                   epsilon = tune.RBF$best.parameters$epsilon, 
+                   cost = tune.RBF$best.parameters$cost, 
+                   gamma = tune.RBF$best.parameters$gamma)
+
+#### 
+# Make predictions on the test set
+pred.RBF <- predict(final.RBF, X_test_svr)
+
+#### linear kernel
+
+# Perform grid search for hyperparameter tuning: RBF kernel is used
+tune.lin <- tune(svm, train.x = X_train_svr, train.y = Y_train, 
+                    ranges = list(epsilon = seq(0.1, 0.5, 0.1), 
+                                  cost = c(1, 10, 100)), 
+                    tunecontrol = tune.control(sampling = "cross", 
+                                               cross = 5) # 5-fold cross-validation
+                    )
+
+#####
+# Train the final model using the best parameters
+final.lin<- svm(X_train_svr, Y_train, 
+                   type = "eps-regression",  # Use "nu-regression" for nu-SVR
+                   kernel = "linear", 
+                   epsilon = tune.lin$best.parameters$epsilon, 
+                   cost = tune.lin$best.parameters$cost)
+#####
+# Make predictions on the test set
+pred.lin <- predict(final.lin, X_test_svr)
+```
+
+The RBF kernel model performed slightly better than the linear kernel model, with a lower mean square error and mean absolute error. **Figure 6** shows the density curve of the predicted flight delays for the SVR model with RBF kernel compared to actual observed flight delays. This density curve comparison shows that the predicted values have a smaller variance than the original values, which may be an indication that the model is underfitted. 
+
+A closer examination of the predicted and observed flight delays of more than 100 minutes indicates that the model is not predicting these extreme values accurately. This observation further underlines the need to flag significant delays—a classification problem that is addressed later in this report.
+
+```{r svr_performance}
+# Evaluate performance
+mse.RBF <- mean((Y_test - pred.RBF)^2)    # mean square error
+mae.RBF <- mean(abs(Y_test - pred.RBF))   # mean absolute error
+rmse.RBF <- sqrt(mean((Y_test - pred.RBF)^2)) # root mean square error
+
+mse.lin <- mean((Y_test - pred.lin)^2)    # mean square error
+mae.lin <- mean(abs(Y_test - pred.lin))   # mean absolute error
+rmse.lin <- sqrt(mean((Y_test - pred.RBF)^2)) # root mean square error
+```
+
+```{r Figure6_density_curve_RBF}
+# Calculate density estimates for Y_test and pred.RBF
+density_Y_test <- density(Y_test)
+density_pred_RBF <- density(pred.RBF)
+
+# Convert hex colors to RGB
+color_Y_test <- rgb(142/255, 43/255, 255/255, 0.3)  # #8e2bff (with transparency)
+color_pred_RBF <- rgb(255/255, 185/255, 0/255, 0.3)  # #ffb900 (with transparency)
+
+# Plot the density of Y_test with the specified color
+plot(density_Y_test, col=color_Y_test, lwd=2, 
+     main="Figure 6. RBF Model Performance", 
+     xlab="Values", ylab="Density", ylim=c(0, 0.017))
+
+# Add the density of pred.RBF with the specified color
+lines(density_pred_RBF, col=color_pred_RBF, lwd=2)
+
+# Fill the area under the density curves with transparent color
+polygon(density_Y_test, col=color_Y_test, border=NA)
+polygon(density_pred_RBF, col=color_pred_RBF, border=NA)
+
+# Add a legend with the new colors
+legend("topright", legend=c("Observed Delay", "Predicted Delay"), fill=c(color_Y_test, color_pred_RBF))
+```
+
+## Model Comparison and Selection
+
+In this section, I will compare the performance of the regularized linear regression models and the support vector regression models and select the best model for predicting flight delays. 
+
+**Table 2** summarizes the performance metrics for each of the five models predicting flight delay in minutes. The LASSO model has a slightly lower mean square error compared to the other models, though the support vector regression model with RBF kernel achieves the lowest mean absolute error. 
+
+Because the LASSO model can be explicitly expressed in a mathematical equation and because it is the simplest of the five models in terms of the number of features included, I recommend the LASSO model for the outlined problem of predicting flight delays in minutes. 
+
+**Table 2. Performance Summary for Regression Models Predicting Flight Delay**
+```{r Table2_linear_regression_performance_summary}
+# Create a performance summary with MSE for each model
+Performance_Summary <- data.frame(
+  Model = c("Lasso", "Ridge", "ElasticNet", "Linear Kernel", "RBF Kernel"),
+  MSE = c(lasso_mse, ridge_mse, elastic_net_mse, mse.lin, mse.RBF),
+  MAE = c(lasso_mae, ridge_mae, elastic_net_mae, mae.lin, mae.RBF),
+  RMSE = c(lasso_rmse.opt, ridge_rmse.opt, elastic_net_rmse.opt, rmse.lin, rmse.RBF)
+)
+
+# Display the summary using pander
+pander(Performance_Summary)
+```
+
+## Regularized Linear Regression Prediction Equation & Summary of Results
+
+The final selected model—the LASSO model derived from regularized linear regression modeling—contains 9 features (Distance, Weather, Flights, Support, Late, Carrier_recoded, Security, Cleaning, Fueling) and two interaction terms ($Flights*Baggage*Late$ and $Distance*Flights*Baggage*Late$). The optimal lambda value used for the LASSO model is 0.02655275. 
+
+This model's limitations include the need to scale and center the independent features before inputting them into the model. In addition, the model requires the airline carrier to be recoded using the numbers specified in <a href="#carrier">section 2.2</a> of this report. 
+
+**Figure 7** shows the density curves of the delays predicted by the LASSO model and the observed delays. Like the RBF kernel model, the curve for the predicted values appears to have less variation than the actual values, thus the LASSO model may be underfitted. A next step may be to reexamine the relationships between features to identify transformations that may improve model fitness and performance. 
+
+```{r prediction_equation_lasso}
+### Prediction Equation: Lasso Model 
+
+# Extract coefficients for the best lambda
+best_lambda_lasso <- cv_lasso$lambda.min
+coefficients_lasso <- coef(cv_lasso, s = best_lambda_lasso)
+# Reconstruct the model equation
+intercept_lasso <- coefficients_lasso[1]
+betas_lasso <- coefficients_lasso[-1]
+
+# cat("Model equation: y =", round(intercept_lasso,6), "+", 
+# paste(round(betas_lasso,4), colnames(X_test), sep = "*", collapse = " + "), "\n")
+```
+
+$$
+y = 69.75661 - 0.5368*Distance + 1.9138*Weather - 2.0814*Flights - 2.0451*Support  \\ -4.304*Late + 0.1831*Carrier + 0.0134*Security + 0.1036*Cleaning \\ - 0.1652*Fueling + 17.8876*Flights*Baggage*Late + 12.7949*Distance*Flights*Baggage*Late  
+$$
+
+```{r Figure7_LASSO_performance}
+# Calculate density estimates for lasso_predictions.opt
+density_pred_LASSO <- density(lasso_predictions.opt)
+
+# convert color for LASSO density curve
+color_pred_LASSO <- rgb(255/255, 100/255, 55/255, 0.3)  # #ff6437 with alpha (opacity) of 0.3
+
+# Plot the density of Y_test with the specified color
+plot(density_Y_test, col=color_Y_test, lwd=2, 
+     main="Figure 7. LASSO Model Performance", 
+     xlab="Values", ylab="Density", ylim=c(0, 0.017))
+
+# Add the density of LASSO predictions with the specified color
+lines(density_pred_LASSO, col=color_pred_LASSO, lwd=2)
+
+# Fill the area under the density curves with transparent color
+polygon(density_Y_test, col=color_Y_test, border=NA)
+polygon(density_pred_LASSO, col=color_pred_LASSO, border=NA)
+
+# Add a legend with the new colors
+legend("topright", legend=c("Observed Delay", "Predicted Delay"), fill=c(color_Y_test, color_pred_LASSO))
+```
+
+# Predicting Flight Delays of More Than Two Hours 
+
+The previous section addressed the problem of predicting flight delays in minutes using information including flight distance, airport volume, aircraft readiness, weather conditions, and support crew availability. The regularized linear regression model developed in <a href="#3.1">Section 3</a> may be less effective for predicting significant delays. This section will use this same features used in the regularized linear regression model to predict whether or not a flight will be delayed by more than two hours. 
+
+What follows is an overview of the modeling process and results comparing three types of regularized logistic regression models (LASSO, Ridge, and Elastic Net) with two models developed using support vector machines (RBF and linear kernels). 
+
+## Regularized Logistic Regression
+
+This section summarizes the methodology for regularized logistic regression modeling, including fitting LASSO, Ridge, and Elastic Net models, analyzing coefficient paths, cross-validating to optimize the hyperparameters, and using receiver operating characteristic (ROC) analysis to evaluate model performance. Finally, I determine the optimal probability cutoff for the binary classification problem and provide the final model. 
+
+```{r regularized_logistic_regression_setup}
+set.seed(172)
+
+# Subset a dataset for logistic regression problem 
+data2 <- data[, c("Distance", "Flights", "Weather", "Support", "Baggage", "Late", "Cleaning", "Fueling", "Security", "Carrier_recoded", "Delayed_2hrs")]
+
+# Split the data into training and testing sets
+train_index2 <- createDataPartition(Y, p = 0.8, list = FALSE)
+data2_train <- data2[train_index2, ]
+data2_test <- data2[-train_index2, ]
+
+# Split into Xi and Y datasets
+
+X2_train <- as.matrix(data2_train[, c("Distance", "Flights", "Weather", "Support", "Baggage", "Late", "Cleaning", "Fueling", "Security", "Carrier_recoded")])
+Y2_train <- data2_train$Delayed_2hrs
+X2_test <- as.matrix(data2_test[, c("Distance", "Flights", "Weather", "Support", "Baggage", "Late", "Cleaning", "Fueling", "Security", "Carrier_recoded")])
+Y2_test <- data2_test$Delayed_2hrs
+
+# standardizing the data
+preprocess_params <- preProcess(X2_train, method = c("center", "scale"))
+X2_train <- predict(preprocess_params, X2_train)
+X2_test <- predict(preprocess_params, X2_test)
+
+# Fit LASSO model
+lasso_model_log <- glmnet(X2_train, Y2_train, family = "binomial", alpha = 1)
+
+# Cross-validation to find the optimal lambda
+cv_lasso_log <- cv.glmnet(X2_train, Y2_train, family = "binomial", alpha = 1)
+
+# Optimal lambda
+lambda_lasso_log <- cv_lasso_log$lambda.min
+
+# Refit the model with the optimal lambda
+lasso_log_model_opt <- glmnet(X2_train, Y2_train, 
+                          family = "binomial", 
+                          alpha = 1, 
+                          lambda = lambda_lasso_log)
+
+
+# Fit Ridge model
+ridge_model_log <- glmnet(X2_train, Y2_train, family = "binomial", alpha = 0)
+
+# Cross-validation to find the optimal lambda
+cv_ridge_log <- cv.glmnet(X2_train, Y2_train, family = "binomial", alpha = 0)
+
+# Optimal lambda
+lambda_ridge_log <- cv_ridge_log$lambda.min
+
+# Refit the model with the optimal lambda
+ridge_log_model_opt <- glmnet(X2_train, Y2_train, 
+                          family = "binomial", 
+                          alpha = 0, 
+                          lambda = lambda_ridge_log)
+
+# Fit Elastic Net model (alpha = 0.5)
+
+elastic_model_log <- glmnet(X2_train, Y2_train, family = "binomial", alpha = 0.5)
+
+# Cross-validation to find the optimal lambda
+cv_elastic_log <- cv.glmnet(X2_train, Y2_train, family = "binomial", alpha = 0.5)
+
+# Optimal lambda
+lambda_elastic_log <- cv_elastic_log$lambda.min
+
+# Refit the model with the optimal lambda
+elastic_log_model_opt <- glmnet(X2_train, Y2_train, 
+                            family = "binomial", 
+                            alpha = 0.5, 
+                            lambda = lambda_elastic_log)
+```
+
+**Figure 8** shows the coefficient paths for each of the three regularized logistic regression models and their optimal lambda ranges. At lambda.min, the minimum mean cross-validation error, the LASSO model retains all 10 feature, and at lambda.1se (i.e., the largest value of lambda with an error that falls within one standard error of lambda.min), the five coefficients retained are those related to flight volume, baggage loading time, lateness of arriving flight, flight distance, and weather conditions. 
+
+**Figure 9** shows the binomial deviance for the LASSO model and the optimal lambda range to minimuze mean cross-validation error, which represents a small range.
+
+```{r figure8_coefficient_path_analysis_log}
+# Set up the layout for three side-by-side plots
+par(mfrow=c(1,3), mar=c(5,2,7,1))
+
+# Plot coefficient path for Lasso
+plot(lasso_model_log, xvar = "lambda", label = FALSE,
+     lwd = 1,
+     main = "Lasso",
+     col = rainbow(10),
+     cex.main = 0.9)
+
+abline(v = log(cv_lasso_log$lambda.min), col = "#8e2bff", lty = 4, lwd = 1)
+abline(v = log(cv_lasso_log$lambda.1se), col = "#f8346b", lty = 4, lwd = 1)
+
+# Add the 'min' and '1se' labels in the bottom-right of the plot
+text(x = -3, y = -0.15, 
+     labels = paste("min = ", round(cv_lasso_log$lambda.min, 4)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+text(x = -3, y = -0.25, 
+     labels = paste("1se = ", round(cv_lasso_log$lambda.1se, 4)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+
+# Plot coefficient path for Ridge
+plot(ridge_model_log, xvar = "lambda", label = FALSE,
+     lwd = 1,
+     main = "Ridge",
+     col = rainbow(10),
+     cex.main = 0.9)
+
+abline(v = log(cv_ridge_log$lambda.min), col = "#8e2bff", lty = 4, lwd = 1)
+abline(v = log(cv_ridge_log$lambda.1se), col = "#f8346b", lty = 4, lwd = 1)
+
+# Add the 'min' and '1se' labels in the bottom-right of the plot
+text(x = 4, y = -0.1, 
+     labels = paste("min = ", round(cv_ridge_log$lambda.min, 4)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+text(x = 4, y = -0.175, 
+     labels = paste("1se = ", round(cv_ridge_log$lambda.1se, 4)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+
+# Plot coefficient path for Elastic Net
+plot(elastic_model_log, xvar = "lambda", label = FALSE,
+     lwd = 1,
+     main = "Elastic Net",
+     col = rainbow(10),
+     cex.main = 0.9)
+
+abline(v = log(cv_elastic_log$lambda.min), col = "#8e2bff", lty = 4, lwd = 1)
+abline(v = log(cv_elastic_log$lambda.1se), col = "#f8346b", lty = 4, lwd = 1)
+
+# Add the 'min' and '1se' labels in the bottom-right of the plot
+text(x = -2, y = -0.15, 
+     labels = paste("min = ", round(cv_elastic_log$lambda.min, 4)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+text(x = -2, y = -0.25, 
+     labels = paste("1se = ", round(cv_elastic_log$lambda.1se, 4)), 
+     adj = c(1, 0), cex = 0.9, col = "black")
+
+# Add a title above all three plots
+mtext("Figure 8. Coefficient Path Analyses", 
+      line = 5, cex = 1.2, font = 2, adj = 2)
+```
+
+```{r return_colnames_X2, echo=FALSE}
+# colnames(X2_train)[c(2,5,6,1,3)]
+```
+
+```{r Figure9_Measure_Model_Fit_Lasso_Log}
+par(mar=c(5,4,6,2))
+plot(cv_lasso_log, main="Figure 9. Measure of Model Fit: LASSO", cex.main = 1)
+
+# Add vertical lines at log(lambda.min) and log(lambda.1se)
+abline(v = log(cv_lasso_log$lambda.min), col = "#8e2bff", lty = 2)  # Line for lambda.min (log scale)
+abline(v = log(cv_lasso_log$lambda.1se), col = "#ff6437", lty = 2)  # Line for lambda.1se (log scale)
+
+# Add text labels for log(lambda.min) and log(lambda.1se)
+text(log(cv_lasso_log$lambda.min), max(cv_lasso_log$cvm), labels = paste("lambda.min =", round(cv_lasso_log$lambda.min, 4)), 
+     col = "#8e2bff", pos = 2, cex = 0.7)
+text(log(cv_lasso_log$lambda.1se), max(cv_lasso_log$cvm), labels = paste("lambda.1se =", round(cv_lasso_log$lambda.1se, 2)), 
+     col = "#ff6437", pos = 2, cex = 0.7)
+```
+
+Next, I evaluate model performance on the test set using a optimal probability cutoff determined by testing a sequence of 50 cutoff values between 0 and 1. **Figure 10** shows cutoff probability and accuracy for the three models. 
+
+```{r predicting_log_performance}
+#############################
+# Predict on the test set: type = "class" uses the default 
+# cut-off probability to be 0.5.
+predict_lasso <- predict(lasso_log_model_opt, newx = X2_test, type = "response")
+predict_ridge <- predict(ridge_log_model_opt, newx = X2_test, type = "response")
+predict_elastic <- predict(elastic_log_model_opt, newx = X2_test, type = "response")
+
+###########################################
+## Optimal cutoff probability determination
+seq.cut <- seq(0,1, length=50)
+# y is a vector of 0 and 1
+acc.lasso <- NULL
+acc.ridge <- NULL
+acc.elastic <- NULL
+for (i in 1:length(seq.cut)){
+   predy.lasso <- ifelse(predict_lasso >seq.cut[i], 1, 0)
+   predy.ridge <- ifelse(predict_ridge >seq.cut[i], 1, 0)
+   predy.elastic <- ifelse(predict_elastic >seq.cut[i], 1, 0)
+   ##
+   acc.lasso[i] <- mean(Y2_test  == predy.lasso)
+   acc.ridge[i] <- mean(Y2_test == predy.ridge)
+   acc.elastic[i] <- mean(Y2_test  == predy.elastic)
+}
+## optimal cut-off: if the maximum accuracy occurs at multiple
+## cut-off probabilities, the average of these cutoff probabilities
+## will be defined as the optimal cutoff probability
+opt.cut.lasso <- mean(seq.cut[which(acc.lasso==max(acc.lasso))])
+opt.cut.ridge <- mean(seq.cut[which(acc.ridge==max(acc.ridge))])
+opt.cut.elastic <- mean(seq.cut[which(acc.elastic==max(acc.elastic))])
+##
+acc.data <- data.frame(prob = rep(seq.cut,3), 
+                       acc=c(acc.lasso, acc.ridge, acc.elastic), 
+                       group = c(rep("lasso",50), rep("ridge",50), rep("elastic",50)))
+```
+
+```{r Figure10_Accuracy}
+# create ggplot comparing accuracy of each model cutoff 
+gg.acc <- ggplot(data = acc.data, aes(x=prob, y = acc, color = group)) +
+  geom_line() +
+  annotate("text", x = 0.6, y = 0.45, 
+           label = paste("LASSO cutoff: ", round(opt.cut.lasso,5), "Accuracy: ", round(max(acc.lasso),5), 
+                         "\nRidge cutoff: ", round(opt.cut.ridge,5), "Accuracy: ", round(max(acc.ridge),5), 
+                         "\nElastic cutoff: ", round(opt.cut.elastic,5), "Accuracy: ", round(max(acc.elastic),5)), 
+           size = 3, 
+           color = "black") +
+  ggtitle("Figure 10. Cut-off Probability vs. Accuracy") +
+  labs(x = "Cut-off Probability", 
+       y = "Accuracy", color = "Group") +
+  theme(plot.title = element_text(hjust = 0.5), aspect.ratio = 1)
+
+##
+ggplotly(gg.acc)
+```
+
+In evaluating the performance of the regularized logistic regression models, I review the metrics for model performance and analyze the ROC curve (**Figure 11**). The three regularized regression models performed equally well in terms of area under the curve. The LASSO and Elastic Net models performed the same in in sensitivity (0.9985) and specificity (0.3235) while the Ridge model has a slightly lower sensitivity (0.9941) and higher specificity (0.4412). Considering both specificity and sensitivity, the Ridge model had the highest balanced accuracy (0.7177) and the highest precision (0.9728).
+
+```{r Table3_calculate_performance_measures}
+#######################################
+## using the optimal cutoff probability to predict labels
+## 
+pred.lab.lasso <- ifelse(predict_lasso > opt.cut.lasso, 1, 0)
+pred.lab.ridge <- ifelse(predict_ridge > opt.cut.ridge, 1, 0)
+pred.lab.elastic <- ifelse(predict_elastic > opt.cut.elastic, 1, 0)
+
+
+#################################
+# Convert predictions to factors
+pred.lab.lasso.fct <- as.factor(pred.lab.lasso)
+pred.lab.ridge.fct <- as.factor(pred.lab.ridge)
+pred.lab.elastic.fct <- as.factor(pred.lab.elastic)
+
+# Convert actual values to factors
+Y2_test <- as.factor(Y2_test)
+
+# Confusion Matrix and Metrics
+confusion.lasso <- confusionMatrix(pred.lab.lasso.fct, Y2_test)
+confusion.ridge<- confusionMatrix(pred.lab.ridge.fct, Y2_test)
+confusion.elastic <- confusionMatrix(pred.lab.elastic.fct, Y2_test)
+
+## Commonly used performance measured
+PerfMeasures <- cbind(lasso = confusion.lasso$byClass, 
+                     ridge = confusion.ridge$byClass, 
+                     elastic = confusion.elastic$byClass)
+
+# pander(PerfMeasures)
+```
+
+```{r Figure11_ROC_curve}
+# library(pROC)
+# Predicted probabilities for each model: type = "response"
+prob_lasso <- predict(lasso_log_model_opt, newx = X2_test, type = "response")
+prob_ridge <- predict(ridge_log_model_opt, newx = X2_test, type = "response")
+prob_elastic <- predict(elastic_log_model_opt, newx = X2_test, type = "response")
+
+# Compute ROC curves: roc object contains a lot information including
+# sensitivity, specificity, AUC, etc.
+roc_lasso <- roc(Y2_test, prob_lasso)
+roc_ridge <- roc(Y2_test, prob_ridge)
+roc_elastic <- roc(Y2_test, prob_elastic)
+
+# Compute AUC values
+auc_lasso <- auc(roc_lasso)
+auc_ridge <- auc(roc_ridge)
+auc_elastic <- auc(roc_elastic)
+
+## LASSO
+sen.lasso <- roc_lasso$sensitivities
+spe.lasso <- roc_lasso$specificities
+auc.lasso <- roc_lasso$auc
+
+## Ridge
+sen.ridge <- roc_ridge$sensitivities
+spe.ridge <- roc_ridge$specificities
+auc.ridge <- roc_ridge$auc
+
+## Elastic Net
+sen.elastic <- roc_elastic$sensitivities
+spe.elastic <- roc_elastic$specificities
+auc.elastic <- roc_elastic$auc
+
+## Plotting the ROC curves: three colors - green, orange, and purple
+
+plot(1-spe.lasso, sen.lasso, 
+     type = "l",
+     col = "#ffb900", 
+     xlim=c(0,1),
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     main = "Figure 11. ROC Curves Regularized Logistic Regression Models")
+lines(1-spe.ridge, sen.ridge, col = "#ff6437")
+lines(1-spe.elastic, sen.elastic, col = "#8e2bff")
+abline(0,1, type = "l", lty = 2, col = "gray", lwd = 1)
+
+# Add legend
+legend("bottomright", legend = c(paste("LASSO (AUC =", round(auc_lasso, 3), ")"),
+                                paste("Ridge (AUC =", round(auc_ridge, 3), ")"),
+                                paste("Elastic Net (AUC =", round(auc_elastic, 3), ")")),
+       col = c("#ffb900", "#ff6437", "#8e2bff"), lty = 1, cex = 0.8, bty = "n")
+```
+
+## Support Vector Machine Classification
+
+In this section, I will fit two models to classify flight delays of more than two hours using a support vector machine with linear and RBF kernels and the same testing and training datasets used for the regularized logistic regression problem. 
+
+```{r svm_classification}
+# use the same training and testing sets from the regularized logistic regression problem 
+train.data <- data2_train
+test.data <- data2_test
+
+tune_control <- tune.control(
+  cross = 5,  # Use 5-fold cross-validation, the default is 10-fold cross-validation
+  nrepeat = 1 # Number of repetitions (for repeated cross-validation)
+)
+## 
+## Perform a grid search for the best hyperparameters
+tune.RBF <- tune(
+  svm,          # using the primary svm() algorithm to tune parameter
+  Delayed_2hrs ~ ., # model formula
+  data = train.data,
+  kernel = "radial",    # You can change the kernel if needed
+  ranges = list(
+    cost = 10^(-1:2),   # tune the hyperparameter C in the loss function
+    gamma = c(0.1, 0.5, 1, 2)  # the hyper parameter in the RBF kernel
+  ),
+  tunecontrol = tune_control  # Use custom cross-validation settings
+)
+## Extract the best model and hyperparameters
+best.RBF <- tune.RBF$best.model
+best.cost.RBF <- best.RBF$cost
+best.gamma.RBF <- best.RBF$gamma
+
+# Print the best hyperparameters  
+# cat("Best Cost:", best.cost.RBF, "\n")
+# cat("Best Gamma:", best.gamma.RBF, "\n")
+```
+
+```{r train_final_model}
+## Train the final SVM model with the best hyperparameters
+final.RBF.class <- svm(
+  Delayed_2hrs ~ .,
+  data = train.data,
+  kernel = "radial",
+  cost = best.cost.RBF,
+  gamma = best.gamma.RBF
+)
+## Make predictions on the test set: type = "class"
+pred.RBF.class <- predict(final.RBF.class, test.data, type = "class")
+```
+
+```{r tune_lin}
+## Perform a grid search for the best hyperparameters
+tune.lin <- tune(
+  svm,          # using the primary svm() algorithm to tune parameter
+  Delayed_2hrs ~ ., # model formula
+  data = train.data,
+  kernel = "linear",    # You can change the kernel if needed
+  ranges = list(
+    cost = 10^(-1:2)   # tune the hyperparameter C in the loss function
+  ),
+  tunecontrol = tune_control  # Use custom cross-validation settings
+)
+
+## Extract the best model and hyperparameters
+best.lin <- tune.lin$best.model
+best.cost.lin <- best.lin$cost
+
+## Train the final SVM model with the best hyperparameters
+final.lin <- svm(
+  Delayed_2hrs ~ .,
+  data = train.data,
+  kernel = "linear",
+  cost = best.cost.lin,
+  probability = TRUE
+)
+
+## Request to return probabilities in final.RBF
+
+final.RBF <- svm(
+  Delayed_2hrs ~ .,
+  data = train.data,
+  kernel = "radial",
+  cost = best.cost.RBF,
+  gamma = best.gamma.RBF,
+  probability = TRUE
+)
+```
+
+**Figure 12** shows the ROC curve comparing the final linear and RBF support vector machine models. The area under the curve is higher for the linear model.
+
+```{r Figure12_ROC_curve_SVM}
+####################
+# ROC Curve
+pred.prob.lin <- predict(final.lin, test.data, probability = TRUE)
+pred.prob.RBF <- predict(final.RBF, test.data, probability = TRUE)
+
+###
+roc_lin <- roc(test.data$Delayed_2hrs, pred.prob.lin)
+roc_RBF <- roc(test.data$Delayed_2hrs, pred.prob.RBF)
+
+### Sen-Spe
+lin.sen <- roc_lin$sensitivities
+lin.spe <- roc_lin$specificities
+rad.sen <- roc_RBF$sensitivities
+rad.spe <- roc_RBF$specificities
+
+## AUC
+auc.lin <- roc_lin$auc
+auc.rad <- roc_RBF$auc
+
+## Plotting ROC curves
+
+plot(1-lin.spe, lin.sen,  
+     xlab = "1 - specificity",
+     ylab = "sensitivity",
+     col = "#8e2bff",
+     type = "l",
+     lty = 1,
+     lwd = 1,
+     main = "Figure 12. ROC Curves of SVM Models")
+lines(1-rad.spe, rad.sen, 
+      col = "#ff6437",
+      lty = 1,
+      lwd = 1)
+abline(0,1, col = "gray", lty = 2, lwd = 2)
+legend("bottomright", c("Linear Kernel", "Radial Kernel"),
+       lty = c(1,1,1), lwd = rep(1,3),
+       col = c("#8e2bff", "#ff6437"),
+       bty="n",cex = 0.8)
+## annotation - AUC
+text(0.8, 0.5, paste("Linear AUC: ", round(auc.lin,4)), cex = 0.8)
+text(0.8, 0.4, paste("Radial AUC: ", round(auc.rad,4)), cex = 0.8)
+```
+
+I then determine the optimal probability cutoff for the classification of flight delays by testing a sequence of 50 cutoff values between 0 and 1. 
+
+```{r optimal_cutoffs_SVM}
+# Define the range of cutoffs  
+cutoffs <- seq(0, 1, length = 50)
+
+# Create empty vectors to store results for each cutoff
+accuracy.lin <- numeric(length(cutoffs))
+accuracy.RBF <- numeric(length(cutoffs))
+auc.lin <- numeric(length(cutoffs))
+auc.RBF <- numeric(length(cutoffs))
+sensitivity.lin <- numeric(length(cutoffs))
+sensitivity.RBF <- numeric(length(cutoffs))
+
+# Loop over the cutoffs
+for (i in 1:length(cutoffs)) {
+  cutoff <- cutoffs[i]
+  
+  # Convert probabilities to predicted class labels based on current cutoff
+  pred.class.lin <- ifelse(pred.prob.lin > cutoff, 1, 0)   
+  pred.class.RBF <- ifelse(pred.prob.RBF > cutoff, 1, 0)   
+  
+  # Calculate accuracy for Linear Model
+  accuracy.lin[i] <- sum(pred.class.lin == test.data$Delayed_2hrs) / length(test.data$Delayed_2hrs)
+  
+  # Calculate accuracy for Radial Model
+  accuracy.RBF[i] <- sum(pred.class.RBF == test.data$Delayed_2hrs) / length(test.data$Delayed_2hrs)
+  
+  # Calculate AUC for both models using the probabilities for the positive class
+  roc_lin <- roc(test.data$Delayed_2hrs, pred.prob.lin)
+  roc_RBF <- roc(test.data$Delayed_2hrs, pred.prob.RBF)
+  
+  auc.lin[i] <- roc_lin$auc
+  auc.RBF[i] <- roc_RBF$auc
+  
+  # Calculate sensitivity for Linear Model
+  sensitivity.lin[i] <- sum(pred.class.lin == 1 & test.data$Delayed_2hrs == 1) / sum(test.data$Delayed_2hrs == 1)
+  
+  # Calculate sensitivity for Radial Model
+  sensitivity.RBF[i] <- sum(pred.class.RBF == 1 & test.data$Delayed_2hrs == 1) / sum(test.data$Delayed_2hrs == 1)
+}
+
+# Now, `accuracy.lin`, `accuracy.RBF`, `auc.lin`, `auc.RBF`, `sensitivity.lin`, and `sensitivity.RBF` contain the results for each cutoff
+
+# Find the best cutoff based on sensitivity
+best_cutoff_sen_lin <- cutoffs[which.max(sensitivity.lin)]  # Best cutoff based on sensitivity for Linear SVM
+best_cutoff_sen_RBF <- cutoffs[which.max(sensitivity.RBF)]  # Best cutoff based on sensitivity for Radial SVM
+
+# Find the best cutoff based on accuracy or AUC
+best_cutoff_acc_lin <- cutoffs[which.max(accuracy.lin)]  # Best cutoff based on accuracy for Linear SVM
+best_cutoff_auc_lin <- cutoffs[which.max(auc.lin)]  # Best cutoff based on AUC for Linear SVM
+best_cutoff_acc_RBF <- cutoffs[which.max(accuracy.RBF)]  # Best cutoff based on accuracy for Radial SVM
+best_cutoff_auc_RBF <- cutoffs[which.max(auc.RBF)]  # Best cutoff based on AUC for Radial SVM
+```
+
+## Model Selection & Prediction Equation
+
+**Table 4** provides the probability cutoffs for each of the five models and compares their accuracy for classifying whether a flight will be delayed by two hours. The SVM RBF model is the most accurate, but only slightly better than the next best model: the Ridge model. 
+
+In the context of this problem, I recommend prioritizing a model with a higher sensitivity to ensure that significantly delayed flights are more likely to be flagged by the model. In this case, either Elastic Net or the Lasso model have the highest sensitivity and are preferable over the SVM RBF model because they can be explicitly expressed as a mathematical equation. Both models retain all 10 features at the optimal lambda value. To prioritize model simplicity and interchangeability and since both models perform equally well, I recommend the LASSO model for predicting whether or not a flight will be delayed two hours. 
+
+**Table 4: Classification Model Performance Metrics**
+```{r Table4_classification_model_performance}
+# Extract accuracy from confusion matrices
+accuracy.lasso <- confusion.lasso$overall['Accuracy']
+accuracy.ridge <- confusion.ridge$overall['Accuracy']
+accuracy.elastic <- confusion.elastic$overall['Accuracy']
+
+# Extract sensitivity from confusion matrices for Lasso, Ridge, and Elastic Net
+sensitivity.lasso <- confusion.lasso$byClass['Sensitivity']
+sensitivity.ridge <- confusion.ridge$byClass['Sensitivity']
+sensitivity.elastic <- confusion.elastic$byClass['Sensitivity']
+
+# Convert probabilities to predicted class labels based on determined cutoff (0.5 or best cutoff)
+pred.class.lin <- ifelse(pred.prob.lin > best_cutoff_acc_lin, 1, 0) 
+pred.class.RBF <- ifelse(pred.prob.RBF > best_cutoff_acc_RBF, 1, 0)  
+
+# Calculate accuracy for SVM Linear and Radial models
+accuracy.lin <- sum(pred.class.lin == test.data$Delayed_2hrs) / length(test.data$Delayed_2hrs)
+accuracy.RBF <- sum(pred.class.RBF == test.data$Delayed_2hrs) / length(test.data$Delayed_2hrs)
+
+# Calculate sensitivity for SVM Linear model
+sensitivity.lin <- sum(pred.class.lin == 1 & test.data$Delayed_2hrs == 1) / sum(test.data$Delayed_2hrs == 1)
+
+# Calculate sensitivity for SVM Radial model
+sensitivity.RBF <- sum(pred.class.RBF == 1 & test.data$Delayed_2hrs == 1) / sum(test.data$Delayed_2hrs == 1)
+
+# Create a data frame to hold the accuracies and model performance metrics
+accuracy_df <- data.frame(
+  Model = c("Lasso", "Ridge", "Elastic Net", "SVM Linear", "SVM RBF"),
+  Cutoff = c(opt.cut.lasso, opt.cut.ridge, opt.cut.elastic, best_cutoff_acc_lin, best_cutoff_acc_RBF),
+  Accuracy = c(accuracy.lasso, accuracy.ridge, accuracy.elastic, accuracy.lin, accuracy.RBF),
+  Sensitivity = c(sensitivity.lasso, sensitivity.ridge, sensitivity.elastic, sensitivity.lin, sensitivity.RBF)
+)
+
+# Print the table using pander()
+pander(accuracy_df)
+```
+
+The equation for the final regularized logistic regression model is presented below. This model requires independent features to be scaled and centered before inputting them into the model. The airline carrier must also be recoded using the numbers specified in <a href="#carrier">section 2.2</a>.  
+
+The optimal probability cutoff for this model is 0.6327. 
+
+```{r regularized_logistic_regression_model_equation}
+# Extract intercept and coefficients
+# Intercept_lasso_log <- lasso_log.coef[1]  # Intercept (first coefficient)
+# Betas_lasso_log <- lasso_log.coef[-1]  # Coefficients excluding the intercept
+
+# Print model equation in the log(p/(1-p)) form
+# cat("log(p/(1 - p)) = ", round(Intercept_lasso_log, 7), " + ", 
+    # paste(round(Betas_lasso_log, 4), colnames(X2_test), sep = "*", collapse = " + "), "\n")
+```
+
+$$
+\log{(\frac{P}{1-P})} = -6.899947  +  0.5774*Distance + 1.7253*Flights + 0.3247*Weather \\ -0.2069*Support + 1.1795*Baggage + 1.0654*Late + 0.0263*Cleaning \\ + 0.1494*Fueling - 0.1115*Security + 0.0736*Carrier 
+$$
+
+# Conclusion
+
+Flight delays are costly to industry, travelers, and the economy as a whole due in part to their cascading effect on schedules, operations, and air traffic. Accurate predictions of flight delays, particularly the risk of significant flight delays, can help airlines, airports, and air traffic control proactively plan and address issues to hopefully minimize this rippling effect of delays. 
+
+This model may be most useful for medium-sized regional airports with moderate flight traffic (ranging between 30,000-50,000 total flights annually) and mostly domestic flights (traveling between 300 and 500 miles) that are attempting to predict delays caused by factors other than weather conditions, including number of support crew available, baggage loading time, lateness of arriving flights of the same aircraft, and aircraft cleaning, fueling, and security check times. In addition to predicting flight delays in real-time, these factors can be tracked over time and analyzed so that airlines and airports can better understand how to maximize support and reduce delays. More accurate delay prediction can also help airlines comply with consumer protection regulations around refunds and accommodations. 
+
+The final regularized linear regression model in this report predicts flight delays with 9 and a half minutes of error on average and is limited in its ability to predict significant delays. The final regularized logistic regression model in this report addresses this issue by predicting whether a delay will be significant with 96.65% accuracy, successfully flagging significant delays 99.85% of the time. In tandem, these two models can help improve flight delay prediction. 
+
+The next steps recommended to further improve model performance are to identify larger and more varied flight datasets to train and tune these models, which will help the industry gain a better understanding of the factors influencing flight delays.  
+
+# References
+
+<p id="1">1. Ball, M., Barnhart, C., Dresner, M., Hansen, M., Neels, K., Odoni, A., Peterson, E., Sherry, L., Trani, A., & Zou, B. (2010). Total delay impact study: A comprehensive assessment of the costs and impacts of flight delay in the United States (Final Report). National Center of Excellence for Aviation Operations Research (NEXTOR). https://isr.umd.edu/NEXTOR/pubs/TDI_Report_Final_10_18_10_V3.pdf</p>
+
+<p id="2">2. Gupta, D. (2017). Applied analytics through case studies using SAS and R. APress. https://doi.org/10.1007/978-1-4842-3525-6</p>
+
+<p id="3">3. U.S. Department of Transportation. (2024, April 24). Biden-Harris administration announces final rule requiring automatic refunds of airline tickets and ancillary service fees. https://www.transportation.gov/briefing-room/biden-harris-administration-announces-final-rule-requiring-automatic-refunds-airline</p>
+
