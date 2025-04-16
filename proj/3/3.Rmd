@@ -1,0 +1,1131 @@
+---
+title: "Developing Decision Trees to Predict High Blood Pressure Among a Sample of U.S. Adults"
+author: "Christine Killion"
+date: "April 16, 2025"
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: no
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 22px;
+  font-weight: bold;
+  color: #8babf1;
+  text-align: center;
+  font-family: sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: strong;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 12px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: normal;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: sans-serif;
+    color: black;
+    text-align: center;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("palmerpenguins")) {
+   install.packages("palmerpenguins")
+library(palmerpenguins)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("naniar")) {
+   install.packages("naniar")
+library(naniar)
+}
+if (!require("pool")) {
+   install.packages("pool")
+library(pool)
+}
+if (!require("DBI")) {
+   install.packages("DBI")
+library(DBI)
+}
+if (!require("RMySQL")) {
+   install.packages("RMySQL")
+library(RMySQL)
+}
+if (!require("randomForest")) {
+   install.packages("randomForest")
+library(randomForest)
+}
+if (!require("ggiraph")) {
+   install.packages("ggiraph")
+library(ggiraph)
+}
+if (!require("highcharter")) {
+   install.packages("highcharter")
+library(highcharter)
+}
+if (!require("broom")) {
+   install.packages("broom")
+library(broom)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("ggplot2")) {
+   install.packages("ggplot2")
+library(ggplot2)
+}
+if (!require("dplyr")) {
+   install.packages("dplyr")
+library(dplyr)
+}
+if (!require("gridExtra")) {
+   install.packages("gridExtra")
+library(gridExtra)
+}
+if (!require("tidyr")) {
+   install.packages("tidyr")
+library(tidyr)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("caret")) {
+   install.packages("caret")
+library(caret)
+}
+if (!require("MASS")) {
+   install.packages("MASS")
+library(MASS)
+}
+if (!require("pROC")) {
+   install.packages("pROC")
+library(pROC)
+}
+if (!require("glmnet")) {
+   install.packages("glmnet")
+library(glmnet)
+}
+if (!require("pander")) {
+   install.packages("pander")
+library(pander)
+}
+if (!require("e1071")) {
+   install.packages("e1071")
+library(e1071)
+}
+if (!require("mlbench")) {
+   install.packages("mlbench")
+library(mlbench)
+}
+if (!require("ipred")) {
+   install.packages("ipred")
+library(ipred)
+}
+if (!require("rpart")) {
+   install.packages("rpart")
+library(rpart)
+}
+if (!require("rpart.plot")) {
+   install.packages("rpart.plot")
+library(rpart.plot)
+}
+
+knitr::opts_chunk$set(echo = TRUE,   # include code chunk in the output file
+                      warning = FALSE,# sometimes, you code may produce warning messages,
+                                      # you can choose to include the warning messages in
+                                      # the output file. 
+                      results = TRUE, # you can also decide whether to include the output
+                                      # in the output file.
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+
+#  Introduction
+
+High blood pressure, or hypertension, is a significant health issue affecting half of U.S. adults, according to the National Heart, Lung, and Blood Institute (NHLBI). Even though this issue is common, NHLBI estimates that a third of U.S. adults with high blood pressure are unaware of their status and are not being treated to prevent associated health risks, which can include chronic kidney disease, heart attack, and stroke.<a href="#1"><sup>1</sup></a>
+
+A significant barrier to properly diagnosing and treating hypertension is the inaccuracy and unreliability of blood pressure readings in clinical settings. According to the American Medical Association and a position statement from the Lancet Commission on Hypertension Group, best practices to optimize blood pressure readings include using automated, appropriately-sized, and verified equipment to reduce error; ensuring the patient has had the proper rest time before beginning the reading and that they are in the right position; and taking steps to mitigate the "white coat effect." What's more, a patient must be instructed to abstain from food and caffeine intake and smoking before the reading to avoid inaccurate results.<a href="#2"><sup>2,</sup></a><a href="#3"><sup>3</sup></a> 
+
+An accurate model that uses patient information and health markers to predict blood pressure levels and classify high blood pressure could complement existing methods for screening individuals at risk of hypertension. Several  hypertension risk models have been developed using artificial intelligence and machine learning techniques.<a href="#4"><sup>4</sup></a> As machine learning and artificial intelligence applications continue to proliferate in healthcare, it's essential to underscore that these models are not substitutes for licensed medical professionals or established methods of blood pressure assessment. With this in mind, predictive models may offer utility in reducing variability in blood pressure readings by identifying cases that warrant targeted cross-validation.
+
+The purpose of this report is to use machine learning techniques to develop decision trees, including a regression tree to predict systolic blood pressure readings and a classification tree to predict high blood pressure among a sample of U.S. adults aged 20 to 90 with a history of smoking. The report will then evaluate whether this particular approach to model-building proves more effective than established linear and logistic regression models. 
+
+## Sample Data Description
+
+The dataset used in this report is a subset of data used in Applied Logistic Regression by Hosmer and Lemeshow (2000).<a href="#5"><sup>5</sup></a> Built from various data sources from the Centers for Disease Control's National Health and Nutrition Examination Survey (NHANES), the dataset contains 12 features with information on health markers and demographics for 7,927 subjects.
+
+- **Age ('age')**: (Integer) Age of the subject in years, from 20 to 90. 
+- **Sex ('sex')**: (Binary) 0 for female and 1 for male. 
+- **Race ('race')**: (Categorical) 1 for white, 2 for Black, 3 for "other."
+- **Body Weight ('body.weight')**: (Numerical) Body weight measured in pounds.
+- **Standing Height ('height')**: (Numerical) Height measured in inches.
+- **Average Systolic Blood Pressure ('avg.sbp')**: (Numerical) Average systolic blood pressure measured in mm Hg.
+- **Average Diastolic Blood Pressure ('avg.dbp')**: (Numerical) Average diastolic blood pressure measured in mm Hg.
+- **Has respondent smoked > 100 cigarettes in life ('past.smk')**: All respondents in this dataset have smoked more than 100 cigarettes in their life, and are thus encoded as '1.'
+- **Does respondent smoke cigarettes now? ('current.smk')**: (Binary) 1 for "yes" and 2 for "No." 
+- **Smoking Status ('smk.status')**: (Categorical) 1 if the respondent has not smoked more than 100 cigarettes in their life (i.e., 'past.smk' = 2); 2 if the respondent has smoked more than 100 cigarettes in their life but they do not currently smoke cigarettes (i.e., 'past.smk' = 1 & 'current.smk' = 2); 3 if the respondent has smoked more than 100 cigarettes in their life and they currently smoke cigarettes (i.e., 'past.smk' = 1 & 'current.smk' = 1).
+- **Serum Cholesterol ('cholesterol')**: (Numerical) Serum cholesterol measured in mg/100ml.
+- **High Blood Pressure ('hbp')**: (Binary) 1 if systolic blood pressure is greater than 140 mm Hg; 0 otherwise. 
+
+```{r data}
+data <- read.csv("https://christinekillion.github.io/machine_learning/data/nhanes.csv")
+
+# Correct spelling error in cholesterol column name
+colnames(data)[colnames(data) == "cholestrol"] <- "cholesterol"
+
+# add smoking status, which is missing from dataset 
+data$smk.status <- ifelse(data$past.smk == 2, 1, 
+                           ifelse(data$past.smk == 1 & data$current.smk == 2, 2,
+                                  ifelse(data$past.smk == 1 & data$current.smk == 1, 3, NA)))
+
+# create a binary category measuring smoker or non-smoker 
+data$smoker <- ifelse(data$current.smk == 2, 0, 1)
+
+# For linear regression
+data1 <- data[, c("age", "sex", "race", "body.weight", "height", "smoker", "cholesterol", "avg.sbp")]
+
+# for classification
+data2 <- data[, c("age", "sex", "race", "body.weight", "height", "smoker", "cholesterol", "hbp")]
+```
+
+## Data Exploration and Preparation
+
+In this section, I will examine the distributions of key features in the dataset and relationships between features to identify any significant trends. Where necessary, I will outline steps taken to engineer the features to prepare for modeling. 
+
+### Demographic Information
+
+Men account for approximately 60% of the dataset and have an average age of 50.9, which is higher than women's average age of 47.0. This difference is statistically significant; a 95% confidence interval for the difference in mean age between the sexes in the dataset gives 3.1 to 4.7 years. Figure 1 shows the distribution of age by sex. 
+
+The subjects in the dataset are approximately 70% white, 27.4% Black, and all other options are categorized as "other," which comprises 2.6% of the dataset. 
+
+```{r Figure1_age_by_sex}
+# Subset ages by sex
+age_female <- data$age[data$sex == 0]
+age_male <- data$age[data$sex == 1]
+
+# Perform two-sample t-test
+# t_test_result <- t.test(age_male, age_female)
+
+# Print the results
+# print(t_test_result)
+
+par(mfrow = c(1, 1), mar = c(0, 2, 4, 1), xpd = TRUE)
+
+# Create histograms without plotting to extract counts
+hist_female <- hist(age_female, breaks = 30, plot = FALSE)
+hist_male <- hist(age_male, breaks = hist_female$breaks, plot = FALSE)
+
+# Mirror male counts
+male_counts <- -hist_male$counts
+female_counts <- hist_female$counts
+age_midpoints <- hist_female$mids
+
+# Plot male bars without labels
+bar_positions <- barplot(height = male_counts,
+                         horiz = TRUE,
+                         col = rgb(0, 0, 1, 0.5),
+                         xlim = c(-250, 250),
+                         space = 0,
+                         axes = FALSE,
+                         main = "Figure 1. Age Distribution by Sex")
+
+# Add female bars
+barplot(height = female_counts,
+        horiz = TRUE,
+        col = "#faaf90",
+        add = TRUE,
+        space = 0,
+        axes = FALSE)
+
+# Pick 8 evenly spaced label positions and corresponding ages
+label_indices <- round(seq(1, length(age_midpoints), length.out = 8))
+axis(2,
+     at = bar_positions[label_indices],
+     labels = round(age_midpoints[label_indices]),
+     las = 1,
+     cex.axis = 0.8)  # Smaller font
+
+# Add legend
+legend("topright", legend = c("Female", "Male"),
+       fill = c("#faaf90", rgb(0, 0, 1, 0.5)),
+       cex = 0.8,
+       pt.cex = 0.8,
+       bty = "n")
+```
+
+### Weight and Height 
+
+The distribution of height for each sex is symmetrically distributed about a mean of 5 feet 8.3 inches for men and 5 feet 3.5 inches for women. The weight distributions have slight right tails and thus higher values with greater deviation from the average; the mean weight for each group is 176.7 lbs for men and 156.1 lbs for women. Figure 2 compares the distributions of height and weight for men and women in the dataset, showing that while some heights and weights overlap, the distributions for women have lower means compared to those of men.  
+
+```{r Figure2_histograms_height_weight_by_sex}
+# 1 row, 2 columns, allow for main headline placement
+par(mfrow = c(1, 2), mar = c(2, 2, 4, 1), oma = c(0, 0, 4, 0), xpd = TRUE)
+
+# ---- Plot 1: Body Weight ----
+
+# Compute y-limits to avoid cutting off frequencies
+bw_female <- data$body.weight[data$sex == 0]
+bw_male <- data$body.weight[data$sex == 1]
+
+hist(bw_female,
+     col = "#faaf90",
+     main = "Weight",
+     xlim = c(73, 455),
+     ylim = c(0, 800),
+     breaks = 30)
+
+hist(bw_male,
+     col = rgb(0, 0, 1, 0.5),
+     add = TRUE,
+     breaks = 30)
+
+# ---- Plot 2: Height ----
+
+ht_female <- data$height[data$sex == 0]
+ht_male <- data$height[data$sex == 1]
+
+hist(ht_female,
+     col = "#faaf90",
+     main = "Height",
+     xlim = c(51,79),
+     ylim = c(0, 800),
+     breaks = 30)
+
+hist(ht_male,
+     col = rgb(0, 0, 1, 0.5),
+     add = TRUE,
+     breaks = 30)
+
+legend(x = 70, y = 900, legend = c("Female", "Male"),
+       fill = c("#faaf90", rgb(0, 0, 1, 0.5)),
+       cex = 0.8,      # Text size (less than 1 is smaller)
+       pt.cex = 0.8,   # Size of the color boxes (adjust accordingly)
+       bty = "n")      # No border around the legend
+
+mtext("Figure 2. Distributions of Weight and Height by Sex", outer = TRUE, cex = 1.3, line = 1)
+```
+
+### Smoking
+
+The dataset contains only individuals who have smoked more than 100 cigarettes in their life. To avoid issues of collinearity, I compress the information about smoking status and smoking history into a new binary feature called "smoker" that is encoded as 0 if the subject previously smoked but does not currently smoke and 1 if the subject previously and currently smokes.
+
+There appears to be a difference between the smoking habits of each sex in the dataset; 31.1% of women are current smokers compared to 28.7% of men. 
+
+### Blood Pressure 
+
+There appears to be a statistically significant difference between the mean systolic blood pressure for men and women in the dataset; at the 95% confidence level, men in the dataset have an average systolic blood pressure between 6.1 and 7.9 mm Hg higher than women. 
+
+```{r Figure3_blood_pressure_sex}
+par(mfrow = c(1, 2), mar = c(2, 2, 4, 1), oma = c(0, 0, 4, 0), xpd = TRUE)
+
+# SBP 
+
+sbp_female <- data$avg.sbp[data$sex == 0]
+sbp_male <- data$avg.sbp[data$sex == 1]
+
+# Perform the t-test
+# t_test_sex <- t.test(sbp_female, sbp_male)
+
+# Print the results
+# print(t_test_sex)
+
+hist(sbp_female,
+     col = "#faaf90",
+     main = "Average SBP",
+     xlim = c(80,244),
+     ylim = c(0, 800),
+     breaks = 30)
+
+hist(sbp_male,
+     col = rgb(0, 0, 1, 0.5),
+     add = TRUE,
+     breaks = 30)
+
+# DBP 
+
+dbp_female <- data$avg.dbp[data$sex == 0]
+dbp_male <- data$avg.dbp[data$sex == 1]
+
+hist(dbp_female,
+     col = "#faaf90",
+     main = "Average DBP",
+     xlim = c(20,140),
+     ylim = c(0, 800),
+     breaks = 30)
+
+hist(dbp_male,
+     col = rgb(0, 0, 1, 0.5),
+     add = TRUE,
+     breaks = 30)
+
+legend(x = 90, y = 900, legend = c("Female", "Male"),
+       fill = c("#faaf90", rgb(0, 0, 1, 0.5)),
+       cex = 0.8,      # Text size (less than 1 is smaller)
+       pt.cex = 0.8,   # Size of the color boxes (adjust accordingly)
+       bty = "n")      # No border around the legend
+
+mtext("Figure 3. Average Blood Pressure Readings by Sex", outer = TRUE, cex = 1.3, line = 1)
+```
+
+Conversely, there does not appear to be a significant difference in mean average systolic blood pressure readings between white and Black subjects; with 95% confidence, the difference is between -1.100735 and 0.849196 mm HG, and thus not significant. 
+
+There also appears to be a weak positive linear relationship between age and average systolic blood pressure, as illustrated in Figure 4, indicating that age will likely be a significant factor in the model. 
+
+The distributions of average blood pressure readings for current and non-current smokers differ for systolic but are similar for diastolic. It appears that current smokers in the dataset have a mean systolic blood pressure average between 7.2 and 8.9 mm Hg lower than nonsmokers, based on a 95% confidence interval. One possible explanation for this difference is that those who are not currently smokers in the dataset tend to be older than those who are currently smokers, as shown in Figure 4. Indeed, the mean age of those who currently smoke is 42.6 compared to 56.4 for those who do not currently smoke, and with 95% certainty, the difference in mean ages between the two groups lies between 13 and 14.5 years. This may indicate that age may be more significant than smoking status for predicting high blood pressure. 
+
+```{r Figure4_age_smoking_status}
+# Assign colors based on smoking status: blue = non-smoker, red = smoker
+point_colors <- ifelse(data$smoker == 1, "#F1D18B", "#8babf1")
+
+# Create the scatterplot
+plot(data$age, data$avg.sbp,
+     main = "Figure 4. Age vs. Average Systolic Blood Pressure",
+     xlab = "Age", 
+     ylab = "Average Systolic Blood Pressure",
+     pch = 19,
+     col = point_colors)
+
+# Add regression line
+abline(lm(data$avg.sbp ~ data$age), col = "black", lwd = 2)
+
+# Add legend
+legend("topleft", legend = c("Not Current Smoker", "Smoker"),
+       col = c("#8babf1", "#F1D18B"),
+       pch = 19,
+       bty = "n", cex = 0.9)
+
+# Subset age data by smoking status
+# age_smoker <- data$age[data$smoker == 1]
+# age_nonsmoker <- data$age[data$smoker == 0]
+
+# Perform two-sample t-test
+# t_test_age_smoker <- t.test(age_smoker, age_nonsmoker)
+
+# View the results
+# print(t_test_age_smoker)
+```
+
+# Model Methodology
+
+Various machine learning approaches to regression modeling can be applied to the problems of predicting systolic blood pressure and identifying individuals with high blood pressure. Classic models like linear and logistic regression tend to be simpler and easier to interpret. Decision trees also offer intuitive and visually interpretable decision paths.
+
+More computationally intensive models—including random forests, support vector machines, and regularized regression techniques (e.g., lasso, ridge, elastic net)—are capable of handling high-dimensional data and, in some cases, capturing non-linear relationships. However, these models can be more complex and less interpretable.
+
+To balance interpretability with model performance, this report adopts an ensemble approach using bagged classification and regression trees (CART). This bagging approach generates a specified number of trees (or "bags") using bootstrap resampling, with each tree trained on a different sample of the original dataset. The final prediction is obtained by averaging (for regression) or majority voting (for classification) across all trees, resulting in a more stable and reliable model for real-world applications.
+
+Optimizing bagged ensemble CART models involves tuning hyperparameters related to tree construction and pruning. Key hyperparameters include: the number of trees/bags, the minimum number of observations required to split a node, the maximum tree depth, and complexity parameters (e.g., minimum impurity decrease or pruning thresholds) that influence splitting decisions.
+
+In the following sections, I will use ensemble bagging methods in combination with CART algorithms to build and compare tree-based models for predicting systolic blood pressure and classifying cases of high blood pressure. These models will be evaluated alongside linear and logistic regression models and base tree models. 
+
+## Bagged Ensemble Regression Tree to Predict Systolic Blood Pressure
+
+In this section, I will compare the effectiveness of linear regression, regression decision tree, and ensemble tree models for predicting the systolic blood pressures of U.S. adults with a history of smoking. 
+
+To begin the hyperparameter tuning process, I defined wide ranges for each of the following parameters: number of bagged trees (50, 75, 150); complexity parameter (cp) for pruning (0.01, 0.001, 0.0001); and maximum tree depth (5, 10, 20). The optimum hyperparameter combinations are those that minimize the out-of-bag error. The first round of tuning indicates that from 50 to 75 bagged trees, the out-of-bag error declines noticably and continues to drop from 75 to 150, though less dramatically. The hyperparameter combination with the lowest out-of-bag error from this round includes 150 bagged trees, a complexity parameter of 0.0001, and a maximum tree depth of 5. 
+
+To further optimize the hyperparameters, I specify a narrower range around the optimum hyperparameter combination found in the first round: 150, 175, and 200 bagged trees; cp values of 0.0005, 0.0008, 0.001, 0.0013, and 0.0015; and max tree depths of 5, 6, 7, and 8. The optimum hyperparameter combination from this final round is 200 bagged trees, a complexity parameter of 0.0005, and a max depth of 6, all of which yield an out-of-bag error of 15.52 on the training dataset. 
+
+```{R CART_algorithm}
+
+# Split the data
+set.seed(147)
+train.index <- createDataPartition(data1$avg.sbp, p = 0.8, list = FALSE)
+train.data <- data1[train.index, ]
+test.data <- data1[-train.index, ]
+
+# Set up train control for cross-validation
+ctrl <- trainControl(
+  method = "cv",
+  number = 5,
+  verboseIter = TRUE
+)
+
+# Define parameter combinations to test to find the optimum parameter combinations 
+nbagg.values <- c(150, 175, 200)     # number bagged trees
+cp.values <- c(0.0005, 0.0008, 0.001)   # candidate cp values 
+maxdepth.values <- c(5, 6, 7)   # maximum depth of the candidate tree  
+
+# Create an empty data frame to store results
+results <- data.frame()
+######## Model tuning
+# Manual tuning loop
+for (nbagg in nbagg.values) {
+  for (cp in cp.values) {
+    for (maxdepth in maxdepth.values) {
+      set.seed(147)
+      model <- bagging(
+        avg.sbp ~ .,
+        data = train.data,
+        nbagg = nbagg,
+        coob = TRUE,
+        trControl = ctrl,
+        control = rpart.control(cp = cp, 
+                                maxdepth = maxdepth)
+       )
+      # Get OOB error from each iteration
+      oob.error <- tail(model$err, 1)  # Get final OOB error only
+      
+      results <- rbind(results, 
+                 data.frame( nbagg = nbagg,
+                             cp = cp,
+                             maxdepth = maxdepth,
+                             oob.error = oob.error))
+    }
+  }
+}
+# Find the best combination that yields the minimum out-of-bag's error
+best.params <- results[which.min(results$oob.error), ]
+# pander(best.params)
+```
+
+Figure 5 shows the trends in hyperparameters and the corresponding out-of-bag errors for the final set of narrowed ranges. The out-of-bag error measures the prediction error for the observations that were not included in the bootstrap sample during model training. These observations are used as a validation set to estimate model performance. The point with the lowest out-of-bag error in Figure 5 indicates the optimized combination of hyperparameters. 
+
+```{r Figure5_ooberror}
+ggplot(results, aes(x = nbagg, y = oob.error, 
+                    color = factor(maxdepth), 
+                    shape = factor(cp))) +
+  geom_point(size = 3) +
+  geom_line(aes(group = interaction(cp, maxdepth)), linetype = "dashed") +
+  labs(
+    title = "Figure 5. Out-of-Bag Error for Hyperparameter Combinations",
+    x = "Number of Bagged Trees",
+    y = "Out-of-Bag Error",
+    color = "Max Depth",
+    shape = "CP"
+  ) +
+  theme_minimal()
+```
+
+Next, I train the final model using the best hyperparameter combination, and I validate this final model on the testing dataset. The final model has a root mean square error of 15.6, an R-squared of 0.371, and a mean absolute error of 11.5. 
+
+```{r train_final_model}
+# Train the final model with the best parameters
+final.model <- bagging(
+  avg.sbp ~ .,
+  data = train.data,
+  nbagg = 200,
+  coob = TRUE,
+  trControl = ctrl,
+  control = rpart.control(cp = 0.0005, 
+                          maxdepth = 6),
+  
+  importance = TRUE
+)
+
+# Evaluate on test set
+predictions <- predict(final.model, newdata = test.data)
+## Using the caret function to calculate errors across re-samples
+baggedError <- postResample(pred = predictions, obs = test.data$avg.sbp)
+# pander(baggedError)
+```
+
+```{r variable_importance}
+##
+var.imp <- varImp(final.model)
+# Extract variable importance (requires a custom function)
+get.bagging.importance <- function(model) {
+  # Get all the trees from the bagging model
+  trees <- model$mtrees
+  
+  # Initialize importance vector
+  imp <- numeric(length(trees[[1]]$btree$variable.importance))
+  names(imp) <- names(trees[[1]]$btree$variable.importance)
+  
+  # Sum importance across all trees
+  for(tree in trees) {
+    imp[names(tree$btree$variable.importance)] <- 
+      imp[names(tree$btree$variable.importance)] + 
+      tree$btree$variable.importance
+  }
+  
+  # Average importance
+  imp <- imp/length(trees)
+  return(imp)
+}
+```
+
+Figure 6 ranks the variable importance scores calculated from the bagged model. Race and sex are ranked as the least significant factors for predicting systolic blood pressure, while and age and current smoking status lead as the most significant factors.
+
+```{r Figure6_importance_scores}
+# Set up plotting area: 1 row, 2 columns
+# Increase margin
+par(mfrow = c(1, 1), mar = c(2, 6, 4, 1), xpd = TRUE)
+
+# Get importance
+importance.scores <- get.bagging.importance(final.model)
+
+# Sort and plot
+importance.scores <- sort(importance.scores, decreasing = TRUE)
+barplot(importance.scores, horiz = TRUE, las = 1,
+        main = "Figure 6. Variable Importance",
+        xlab = "Importance Score",
+        col = "#8babf1")
+```
+
+### Model Comparison 
+
+In this section I will fit two alternative models: a least squares linear regression model and a base regression decision tree. I will then compare the performance of these models with that of the bagged regression tree model developed in the previous section. 
+
+```{r LSE_model}
+##
+## ordinary LSE regression model with step-wise variable selection
+lse.fit <- lm(avg.sbp ~.,data = train.data)
+AIC.fit <- stepAIC(lse.fit, direction="both", trace = FALSE)
+##
+pred.lse <- predict(AIC.fit, test.data)
+mae.lse <- mean(abs(test.data$avg.sbp - pred.lse)) # mean absolute error
+mse.lse <- mean((test.data$avg.sbp - pred.lse)^2)  # mean square error
+rmse.lse <- sqrt(mse.lse)                       # root mean square error
+r.squared.lse <- (cor(test.data$avg.sbp, pred.lse))^2 # r-squared
+```
+
+```{r base_regression_tree}
+# Base regression tree
+tree.model <- rpart(avg.sbp ~ ., 
+                    data = train.data,
+                    method = "anova",     # For regression
+                    control = rpart.control(
+                      minsplit = 20,    # 3. Stopping rule: min observations to split
+                      minbucket = 7,    # Min observations in terminal node
+                      cp = 0.001, # Complexity parameter - input best performing cp
+                      maxdepth = 5      # Maximum tree depth
+                    ))
+# cp table
+cp.table <- tree.model$cptable
+##
+## Identify the minimum `xerror` and its `cp`.
+min.xerror <- min(cp.table[, "xerror"])
+min.cp.row <- which.min(cp.table[, "xerror"])
+min.cp <- cp.table[min.cp.row, "CP"]
+##
+pruned.tree.min.cp <- prune(tree.model, cp = min.cp)
+pred.min.cp <- predict(pruned.tree.min.cp, newdata = test.data)
+##
+# min.cp
+mae.tree.min.cp <- mean(abs(test.data$avg.sbp - pred.min.cp))
+mse.tree.min.cp <- mean((test.data$avg.sbp - pred.min.cp)^2)
+rmse.tree.min.cp <- sqrt(mse.tree.min.cp)
+r.squared.tree.min.cp <- cor(test.data$avg.sbp, pred.min.cp)^2
+```
+
+Table 1 summarizes the errors of each regression model. The model with the highest R-squared and lowest root mean squared error (RMSE) and mean absolute error (MAE) is the bagged tree model, indicating that this model is the best for predicting systolic blood pressure compared to the linear regression and base tree models. However, the mean absolute error indicates that the model's predictions are off by 11.5 mm Hg on average, which is a significant error in the context of systolic blood pressure readings.
+
+```{r Table1. summary_regression_errors}
+###
+Errors <- cbind(MAE = c(baggedError[3], mae.tree.min.cp, mae.lse),
+          RMSE = c(baggedError[1], rmse.tree.min.cp, rmse.lse),
+          r.squared = c(baggedError[2], r.squared.tree.min.cp, r.squared.lse))
+rownames(Errors) = c("bagged Tree", "tree.min.cp", "lse")
+pander(Errors, caption = "Table 1. Summary of Model Performance Metrics")
+```
+
+### Model Selection
+
+The best-performing model for predicting systolic blood pressure is the bagged ensemble regression tree model with these hyperparameters: 200 bagged trees, a complexity parameter of 0.0005, and a max depth of 6. This model produced the lowest mean absolute error and root mean square error (RMSE) and the highest R-squared value, indicating that the model explains more of the variance in observed systolic blood pressure and does so with fewer large prediction errors compared to other models.
+
+Figure 7 shows a visual example of one of the 200 bagged decision tree from this model for reference. 
+
+```{r Figure7_bagged_ensemble_tree_example}
+get_tree_complexity <- function(tree) {
+  sum(tree$frame$var != "<leaf>")
+}
+# Get the number of internal nodes (splits) for each tree
+complexities <- sapply(final.model$mtrees, function(mtree) {
+  get_tree_complexity(mtree$btree)
+})
+
+simplest_index <- which.min(complexities)
+simplest_tree <- final.model$mtrees[[simplest_index]]$btree
+
+# Plot the pruned tree
+rpart.plot(simplest_tree, 
+           main = "Figure 7. Bagged Decision Tree Example")
+```
+
+Figure 8 shows the bagged regression tree model's predictions compared to the observed data in the test dataset, color-coded by age. Overall, the model predicted systolic blood pressure in a narrower range, with less variability than the observed data. 
+
+It seems that the bagged regression tree model is less effective at predicting high blood pressure levels above 150 mm Hg, particularly among older adults (though not exclusively).
+
+The next section will address the classification problem of identifying high blood pressure, i.e., average systolic blood pressures above 140 mm Hg.  
+
+```{r Figure8_pred_by_age}
+# Create a color gradient for age
+age_scaled <- (test.data$age - min(test.data$age)) / (max(test.data$age) - min(test.data$age))
+age_colors <- rgb(colorRamp(c("#d9e4ff", "navy"))(age_scaled), maxColorValue = 255)
+
+plot(test.data$avg.sbp, predictions,
+     main = "Figure 8. Predicted vs. Observed SBP by Age",
+     xlab = "Observed SBP",
+     ylab = "Predicted SBP",
+     xlim = c(70,250),
+     ylim = c(100,200),
+     pch = 19,
+     col = age_colors,
+     asp = 1)
+abline(a = 0, b = 1, col = "black", lwd = 2, lty = 2)
+
+legend("topright", legend = c("Younger", "Older"),
+       fill = c("#d9e4ff", "navy"),
+       cex = 0.8,      # Text size (less than 1 is smaller)
+       pt.cex = 0.8,   # Size of the color boxes (adjust accordingly)
+       bty = "n")      # No border around the legend
+```
+
+## Bagged Ensemble Classification Tree to Predict High Blood Pressure
+
+In this section, I will develop a bagged ensemble classification tree model to predict whether or not a subject has high blood pressure. 
+
+I begin by testing each combination of a wide range of hyperparameters: 100 versus 200 bags; minimum split values and max depth values of 5, 10, 15, and 20; and complexity parameters of 0.1, 0.01, 0.005, 0.001, and 0.0005. I also test a series of probability cutoffs from 0.1 to 0.9 in increments of 0.01. The combination that produces the highest accuracy is 100 bags, a minimum split of 5, a max depth of 5, a cp of 0.005, and a cutoff of 0.49. To fine tune the model, I test a narrower range of hyperparameters around these optimum values: bags of 75, 100, and 125; minimum splits and max depth values of 5, 6, and 7; cp values of 0.003, 0.005, and 0.007; and a narrower range of cutoffs between 0.3 and 0.6 in increments of 0.01. The combination that yields the best accuracy is 100 bags, a min split and max depth value of 6, a cp of 0.005, and a cutoff of 0.47. 
+
+```{r classification_tree}
+# Set seed for reproducibility
+set.seed(147)
+
+# Ensure hbp is a factor with levels "0" and "1"
+data2$hbp <- factor(data2$hbp, levels = c(0, 1))  # 0 = no, 1 = yes (positive class)
+
+# Split data into training and testing sets
+trainIndex2 <- createDataPartition(data2$hbp, p = 0.7, list = FALSE)
+trainData <- data2[trainIndex2, ]
+testData <- data2[-trainIndex2, ]
+
+# Create a grid of hyperparameter combinations
+hyper.grid <- expand.grid(
+  nbagg = c(75, 100, 125),
+  minsplit = c(5, 6, 7), 
+  maxdepth = c(5, 6, 7),
+  cp = c(0.003, 0.005, 0.007))
+
+# Define cutoffs to test
+cutoffs <- seq(0.3, 0.6, by = 0.01)
+
+# Initialize result storage
+results <- data.frame()
+best.accuracy <- 0
+best.params <- list()
+
+# Loop through each hyperparameter combination
+for (i in 1:nrow(hyper.grid)) {
+  # Extract current parameters
+  params <- hyper.grid[i, ]
+  
+  # Define rpart control
+  rpart.control <- rpart.control(
+    minsplit = params$minsplit,
+    maxdepth = params$maxdepth,
+    cp = params$cp
+  )
+  
+  # Train bagging model
+  bag.model <- bagging(
+    hbp ~ .,
+    data = trainData,
+    nbagg = params$nbagg,
+    coob = TRUE,
+    control = rpart.control
+  )
+  
+  # Predict probabilities for class "1"
+  probs <- predict(bag.model, newdata = testData, type = "prob")
+  
+  # If it's a matrix/data frame, extract the probability for "1" class (positive)
+  if (is.matrix(probs) || is.data.frame(probs)) {
+    probs <- probs[, "1"]  # Extract the probability for class "1"
+  }
+  
+  # Check length of probs (should match number of observations in testData)
+  stopifnot(length(probs) == nrow(testData))  # Will throw an error if lengths don't match
+  
+  # Loop through each cutoff threshold
+  for (cutoff in cutoffs) {
+    # Convert probabilities to predicted class labels
+    preds <- ifelse(probs >= cutoff, "1", "0")
+    preds <- factor(preds, levels = c("0", "1"))  # Make sure preds are a factor with correct levels
+    reference <- factor(testData$hbp, levels = c("0", "1"))  # Ensure the reference is also a factor
+
+    # Check for valid overlap (reference and preds must have same factor levels)
+    if (length(intersect(unique(preds), unique(reference))) > 0) {
+      cm <- confusionMatrix(preds, reference, positive = "1")
+      accuracy <- cm$overall["Accuracy"]
+      
+      # Store result
+      results <- rbind(results, data.frame(
+        nbagg = params$nbagg,
+        minsplit = params$minsplit,
+        maxdepth = params$maxdepth,
+        cp = params$cp,
+        cutoff = cutoff,
+        Accuracy = as.numeric(accuracy)
+      ))
+      
+      # Update best model if accuracy improves
+      if (accuracy > best.accuracy) {
+        best.accuracy <- accuracy
+        best.params <- params
+        best.params$cutoff <- cutoff
+      }
+    }
+  }
+}
+
+# Print best hyperparameter combination
+# cat("Best Parameters:\n")
+# pander(best.params)
+```
+ 
+Figure 9 compares the accuracy of each combination of hyperparameters, showing only the combinations for the optimal cutoff. The point with the highest accuracy indicates the optimal combination of parameters. 
+
+```{r Figure9_accuracy_hyperparameter_tuning}
+# Filter the results to only include best.params$cutoff
+results_05 <- subset(results, cutoff == best.params$cutoff)
+
+# Plot using the filtered data
+ggplot(results_05, aes(x = nbagg, y = Accuracy, 
+                       color = factor(maxdepth), 
+                       shape = factor(cp),
+                       linetype = factor(minsplit))) +
+  geom_point(size = 3) +
+  geom_line(aes(group = interaction(cp, maxdepth, minsplit)), linewidth = 0.8) +
+  labs(
+    title = paste("Figure 9. Accuracy of Hyperparameter Combinations (Cutoff:", best.params$cutoff, ")"),
+    x = "Number of Bagged Trees",
+    y = "Accuracy",
+    color = "Max Depth",
+    shape = "CP",
+    linetype = "Min Split"
+  ) +
+  theme_minimal()
+```
+
+I then use the optimal combination of hyperparameters to train the final model and classify high blood pressure for the subjects included in the testing set. The prediction results for the 2,377 observations in the testing set are displayed in Table 2. 
+
+```{r set_rpart_control_best_parameters}
+# Set rpart control with best parameters
+
+best.control <- rpart.control(
+  minsplit = best.params$minsplit,
+  maxdepth = best.params$maxdepth,
+  cp = best.params$cp
+)
+
+# Train final bagging model with the best parameters
+final.bag.model <- bagging(
+  hbp ~ .,
+  data = trainData,
+  nbagg = best.params$nbagg,
+  coob = TRUE,
+  control = best.control
+)
+
+# Get predicted probabilities for the final model
+final.probs <- predict(final.bag.model, newdata = testData, type = "prob")
+
+# If it's a matrix or data frame, extract the probability for class "1"
+if (is.matrix(final.probs) || is.data.frame(final.probs)) {
+  final.probs <- final.probs[, "1"]
+}
+
+# Apply the optimal cutoff to convert probabilities to predicted labels
+final.preds <- ifelse(final.probs >= best.params$cutoff, "1", "0")
+final.preds <- factor(final.preds, levels = c("0", "1"))  # Ensure the levels match
+
+# Evaluate performance on the test set using confusion matrix
+final.cm <- confusionMatrix(final.preds, testData$hbp)
+
+# Copy the table for custom display
+cm.display <- final.cm$table
+rownames(cm.display) <- c( "Actual: No", "Actual: Yes")
+colnames(cm.display) <- c("Model Predicted: No", "Model Predicted: Yes")
+
+# Display the labeled confusion matrix
+pander::pander(cm.display, caption = "Table 2. Confusion Matrix for High Blood Pressure Predictions")
+```
+
+### Model Comparison 
+
+In this section, I will compare the effectiveness of a bagged ensemble classification tree model to logistic regression and base classification tree models for predicting whether or not a subject has high blood pressure. 
+
+The ROC curves in Figure 10 compare the accuracy of each of the models. The logistic regression model has the highest area under the curve. 
+
+```{r Figure10_ROC_curves}
+### Logistic Regression Model
+logit.fit <- glm(hbp ~ ., data = trainData, family = binomial)
+AIC.logit <- step(logit.fit, direction = "both", trace = 0)
+pred.logit <- predict(AIC.logit, testData, type = "response")
+
+### Classification Tree Model
+tree.model <- rpart(hbp ~ ., 
+                    data = trainData,
+                    method = "class",
+                    parms = list(split = "gini", 
+                                 loss = matrix(c(0, 0.5, 1, 0), nrow = 2)),
+                    control = rpart.control(
+                      minsplit = 15,
+                      minbucket = 5,
+                      cp = 0.001,
+                      maxdepth = 5))
+
+# Prune tree using best CP from xerror
+min.cp <- tree.model$cptable[which.min(tree.model$cptable[,"xerror"]), "CP"]
+pruned.tree.min <- prune(tree.model, cp = min.cp)
+pred.prob.min <- predict(pruned.tree.min, testData, type = "prob")[,2]
+
+### Bagged model prediction (already trained separately)
+pred.prob.bagg <- predict(final.bag.model, newdata = testData, type = "prob")[,2]
+
+# Function to get best cutoff based on accuracy
+get_best_cutoff_accuracy <- function(truth, probs, cutoffs = seq(0.1, 0.9, by = 0.01)) {
+  best.acc <- -Inf
+  best.cutoff <- NA
+  for (cut in cutoffs) {
+    pred <- ifelse(probs >= cut, "1", "0")
+    pred <- factor(pred, levels = c("0", "1"))
+    truth <- factor(truth, levels = c("0", "1"))
+    cm <- confusionMatrix(pred, truth, positive = "1")
+    acc <- cm$overall["Accuracy"]
+    if (acc > best.acc) {
+      best.acc <- acc
+      best.cutoff <- cut
+    }
+  }
+  return(best.cutoff)
+}
+
+# Get optimal cutoffs based on accuracy
+cutoff.logit.acc <- get_best_cutoff_accuracy(testData$hbp, pred.logit)
+cutoff.tree.acc <- get_best_cutoff_accuracy(testData$hbp, pred.prob.min)
+
+### ROC Objects
+roc.logit <- roc(testData$hbp, pred.logit)
+roc.tree.min <- roc(testData$hbp, pred.prob.min)
+roc.bagg <- roc(testData$hbp, pred.prob.bagg)
+
+### Sensitivity & Specificity
+logit.sen <- roc.logit$sensitivities
+logit.spe <- roc.logit$specificities
+tree.min.sen <- roc.tree.min$sensitivities
+tree.min.spe <- roc.tree.min$specificities
+bagg.sen <- roc.bagg$sensitivities
+bagg.spe <- roc.bagg$specificities
+
+### AUCs
+auc.logit <- roc.logit$auc
+auc.tree.min <- roc.tree.min$auc
+auc.bagg <- roc.bagg$auc
+
+### Plot ROC Curves
+plot(1 - logit.spe, logit.sen,  
+     xlab = "1 - Specificity",
+     ylab = "Sensitivity",
+     col = "#C29A5D",
+     type = "l",
+     lty = 1,
+     lwd = 1.5,
+     main = "Figure 10. ROC Curves for Each Classification Model")
+
+lines(1 - bagg.spe, bagg.sen, 
+      col = "#5e7bba",
+      lty = 1,
+      lwd = 1.5)
+
+lines(1 - tree.min.spe, tree.min.sen,      
+      col = "#d68c6f",
+      lty = 1,
+      lwd = 1.5)
+
+abline(0, 1, col = "gray", lty = 2, lwd = 2)
+
+# Combine legend and performance annotations in one legend block
+legend("bottomright",
+       legend = c(
+         paste("Logistic Regression ( AUC:", round(auc.logit, 4), 
+               ", Cutoff:", cutoff.logit.acc, ")"),
+         paste("Bagged Tree ( AUC:", round(auc.bagg, 4), 
+               ", Cutoff:", best.params$cutoff, ")"),
+         paste("Base Tree ( AUC:", round(auc.tree.min, 4), 
+               ", Cutoff:", cutoff.tree.acc, ")")
+       ),
+       col = c("#C29A5D", "#5e7bba", "#d68c6f"),
+       lty = 1,
+       lwd = 1.5,
+       bty = "n",
+       cex = 0.8,
+       text.col = c("#C29A5D", "#5e7bba", "#d68c6f"))
+```
+
+Table 3 compares the sensitivity, specificity, accuracy, and balanced accuracy (i.e., the average of sensitivity and specificity) of each of the three models. The model with the highest sensitivity and AUC is the logistic regression model. The specificity performance is comparable across all models; in other words, all three models did just as well correctly predicting those without high blood pressure. 
+
+```{r Table3_classification_model_comparison}
+# Function to extract sensitivity, specificity, AUC, and balanced accuracy
+extract_performance <- function(roc_obj) {
+  best_index <- which.max(roc_obj$sensitivities + roc_obj$specificities - 1)
+  data.frame(
+    Sensitivity = round(roc_obj$sensitivities[best_index], 3),
+    Specificity = round(roc_obj$specificities[best_index], 3),
+    AUC = round(auc(roc_obj), 3),
+    Balanced_Accuracy = round((roc_obj$sensitivities[best_index] + roc_obj$specificities[best_index]) / 2, 3)
+  )
+}
+
+# Extract for each model
+perf.tree.min <- extract_performance(roc.tree.min)
+perf.logit <- extract_performance(roc.logit)
+perf.bagg <- extract_performance(roc.bagg)
+
+# Combine into one table
+model_comparison <- rbind(
+  `Base Tree` = perf.tree.min,
+  `Logistic Regression` = perf.logit,
+  `Bagged Tree` = perf.bagg
+)
+
+# Print with pander
+pander(model_comparison, caption = "Table 3. Comparison of Classification Model Performance Metrics")
+```
+
+### Model Selection
+
+The model that most accurately predicts whether subjects have high blood pressure is the one with the highest sensitivity, which is the logistic regression model. The probability form of the logistic regression equation is provided below. 
+
+```{r logistic_regression_equation}
+# Extract and round coefficients
+coefs <- coef(AIC.logit)
+rounded_coefs <- round(coefs, 4)
+
+# Build the linear part
+linear_eq <- paste0(
+  rounded_coefs[1], " + ",
+  paste0(
+    rounded_coefs[-1], "*", names(rounded_coefs)[-1],
+    collapse = " + "
+  )
+)
+
+# Build full LaTeX equation
+latex_eq <- paste0(
+  "$$\\hat{p} = \\frac{e^{", linear_eq, "}}{1 + e^{", linear_eq, "}}$$"
+)
+
+# Print LaTeX equation
+# cat("Logistic Regression Equation in LaTeX:\n")
+# cat(latex_eq)
+```
+
+$$\hat{p} = \frac{e^{-6.0401 + 0.0769*age + 0.332*race + 0.0061*body.weight -0.0297*height + 0.2167*smoker + 0.004*cholesterol}}{1 + e^{-6.0401 + 0.0769*age + 0.332*race + 0.0061*body.weight -0.0297*height + 0.2167*smoker + 0.004*cholesterol}}$$
+
+The logistic regression model correctly predicted high blood pressure in 82.5% of subjects who had average systolic blood pressure readings above 140 mm Hg.  
+
+# Conclusion 
+
+Based on the results of this report, there is not enough evidence to conclude that the ensemble tree-based models developed herein are significantly better than linear or logistic regression models at predicting high systolic blood pressure in U.S. adults with a history of smoking.  
+
+While the bagged tree model had slightly smaller error than the least squares linear regression model, the mean absolute error across all models (approximately 12 mm Hg) is large in the context of systolic blood pressure readings. When comparing the bagged tree model predictions to actual values, the error appeared to be more pronounced for higher systolic blood pressure levels.
+
+The bagged tree classification model slightly underperformed the logistic regression model in terms of sensitivity; the bagged tree model correctly predicted high blood pressure in 80.8% of cases, compared to 82.5% for the logistic regression model. This means that the bagged model misclassified high blood pressure in 19.2% of subjects who actually have high blood pressure.
+
+The information captured in this dataset may not be giving a complete picture of the factors that affect systolic blood pressure (for instance, stress levels, family history, etc.). To improve model performance, additional information can be used to develop more accurate and precise prediction models beyond age, height, weight, sex, race, smoking status, and cholesterol levels. Additionally, a more granular measure of past and current smoking habits could improve model performance.
+
+Blood pressure readings in clinical settings have been shown to produce inaccuracies that challenge the diagnosis of hypertension.<a href="#2"><sup>2</sup></a> Prediction models can complement existing blood pressure monitoring techniques by outputting expected blood pressure levels and comparing the expected level to the actual blood pressure reading. Clinicians can use this information to determine whether a patient's blood pressure requires further validation in line with existing best practices.
+
+Those developing models to predict high blood pressure must exercise extreme caution when educating medical professionals, industry leaders, policymakers, and the public about applications of machine learning in healthcare. Prediction models should never be used in isolation to screen for or diagnose hypertension, and they must not be seen as substitutes for certified healthcare providers or established methods of blood pressure assessment.
+
+# References
+
+<p id="1">1. National Heart, Lung, and Blood Institute. (n.d.). High blood pressure. National Institutes of Health.</p>
+
+<p id="2">2. American Medical Association. (2025, April 14). 4 big ways BP measurement goes wrong, and how to tackle them. American Medical Association. https://www.ama-assn.org/delivering-care/hypertension/4-big-ways-bp-measurement-goes-wrong-and-how-tackle-them</p>
+
+<p id="3">3. Padwal, R., Campbell, N. R. C., Schutte, A. E., Olsen, M. H., Delles, C., Etyang, A., Cruickshank, J. K., Stergiou, G., Rakotz, M. K., Wozniak, G., Jaffe, M. G., Benjamin, I., Parati, G., & Sharman, J. E. (2019). Optimizing observer performance of clinic blood pressure measurement: A position statement from the Lancet Commission on Hypertension Group. Journal of Hypertension, 37(9), 1737–1745. https://doi.org/10.1097/HJH.0000000000002112</p>
+
+<p id="4">4. Echouffo-Tcheugui, J. B., Batty, G. D., Kivimäki, M., & Kengne, A. P. (2013). Risk models to predict hypertension: A systematic review. PLOS ONE, 8(7), e67370. https://doi.org/10.1371/journal.pone.0067370</p>
+
+<p id="5">5. Hosmer, D. W., Jr., & Lemeshow, S. (2000). Applied logistic regression (2nd ed.). John Wiley & Sons. https://doi.org/10.1002/0471722146</p>
+
+
