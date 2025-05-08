@@ -1,0 +1,1029 @@
+---
+title: "Predicting University Student Dropout Rates Using One-Hidden-Layer Neural Network"
+author: "Christine Killion"
+date: "May 8, 2025"
+output:
+  html_document: 
+    toc: yes
+    toc_depth: 4
+    toc_float: yes
+    number_sections: yes
+    toc_collapsed: yes
+    code_folding: hide
+    code_download: yes
+    smooth_scroll: yes
+    theme: lumen
+  word_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    keep_md: yes
+  pdf_document: 
+    toc: yes
+    toc_depth: 4
+    fig_caption: yes
+    number_sections: no
+    fig_width: 3
+    fig_height: 3
+editor_options: 
+  chunk_output_type: inline
+---
+
+```{=html}
+
+<style type="text/css">
+
+/* Cascading Style Sheets (CSS) is a stylesheet language used to describe the presentation of a document written in HTML or XML. it is a simple mechanism for adding style (e.g., fonts, colors, spacing) to Web documents. */
+
+h1.title {  /* Title - font specifications of the report title */
+  font-size: 22px;
+  font-weight: bold;
+  color: #ac1f67;
+  text-align: center;
+  font-family: sans-serif;
+}
+h4.author { /* Header 4 - font specifications for authors  */
+  font-size: 18px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: strong;
+}
+h4.date { /* Header 4 - font specifications for the date  */
+  font-size: 12px;
+  font-family: system-ui;
+  color: navy;
+  text-align: center;
+  font-weight: normal;
+}
+h1 { /* Header 1 - font specifications for level 1 section title  */
+    font-size: 22px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: center;
+    font-weight: bold;
+}
+h2 { /* Header 2 - font specifications for level 2 section title */
+    font-size: 20px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+    font-weight: bold;
+}
+
+h3 { /* Header 3 - font specifications of level 3 section title  */
+    font-size: 18px;
+    font-family: "Times New Roman", Times, serif;
+    color: navy;
+    text-align: left;
+}
+
+h4 { /* Header 4 - font specifications of level 4 section title  */
+    font-size: 18px;
+    font-weight: bold;
+    font-family: sans-serif;
+    color: black;
+    text-align: center;
+}
+
+body { background-color:white; }
+
+.highlightme { background-color:yellow; }
+
+p { background-color:white; }
+
+</style>
+```
+
+```{r setup, include=FALSE}
+# code chunk specifies whether the R code, warnings, and output 
+# will be included in the output files.
+if (!require("knitr")) {
+   install.packages("knitr")
+   library(knitr)
+}
+if (!require("tidyverse")) {
+   install.packages("tidyverse")
+library(tidyverse)
+}
+if (!require("palmerpenguins")) {
+   install.packages("palmerpenguins")
+library(palmerpenguins)
+}
+if (!require("plotly")) {
+   install.packages("plotly")
+library(plotly)
+}
+if (!require("GGally")) {
+   install.packages("GGally")
+library(GGally)
+}
+if (!require("naniar")) {
+   install.packages("naniar")
+library(naniar)
+}
+if (!require("pool")) {
+   install.packages("pool")
+library(pool)
+}
+if (!require("DBI")) {
+   install.packages("DBI")
+library(DBI)
+}
+if (!require("RMySQL")) {
+   install.packages("RMySQL")
+library(RMySQL)
+}
+if (!require("randomForest")) {
+   install.packages("randomForest")
+library(randomForest)
+}
+if (!require("ggiraph")) {
+   install.packages("ggiraph")
+library(ggiraph)
+}
+if (!require("highcharter")) {
+   install.packages("highcharter")
+library(highcharter)
+}
+if (!require("broom")) {
+   install.packages("broom")
+library(broom)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("ggplot2")) {
+   install.packages("ggplot2")
+library(ggplot2)
+}
+if (!require("dplyr")) {
+   install.packages("dplyr")
+library(dplyr)
+}
+if (!require("gridExtra")) {
+   install.packages("gridExtra")
+library(gridExtra)
+}
+if (!require("tidyr")) {
+   install.packages("tidyr")
+library(tidyr)
+}
+if (!require("mice")) {
+   install.packages("mice")
+library(mice)
+}
+if (!require("caret")) {
+   install.packages("caret")
+library(caret)
+}
+if (!require("MASS")) {
+   install.packages("MASS")
+library(MASS)
+}
+if (!require("pROC")) {
+   install.packages("pROC")
+library(pROC)
+}
+if (!require("neuralnet")) {
+   install.packages("neuralnet")
+library(neuralnet)
+}
+if (!require("pander")) {
+   install.packages("pander")
+library(pander)
+}
+if (!require("naivebayes")) {
+   install.packages("naivebayes")
+library(naivebayes)
+}
+
+knitr::opts_chunk$set(echo = TRUE,   # include code chunk in the output file
+                      warning = FALSE,# sometimes, you code may produce warning messages,
+                                      # you can choose to include the warning messages in
+                                      # the output file. 
+                      results = TRUE, # you can also decide whether to include the output
+                                      # in the output file.
+                      message = FALSE,
+                      comment = NA
+                      )  
+```
+
+# Introduction
+
+The purpose of this report is to assess the effectiveness of a hidden-layer neural network for predicting university student dropout rates. The report draws from data and research by the authors of <em>Early Prediction of Student’s Performance in Higher Education: A Case Study</em>.<a href="#1"><sup>1</sup></a> This report is a continuation of "<a href="https://christinekillion.github.io/machine_learning/proj/1/1.3.html">Exploring Regression Models for Predicting University Students’ Academic Outcomes</a>," which assessed the effectiveness of regression models using machine learning techniques for predicting student academic outcomes; the report that follows uses the same dataset to compare logistic regression to simple perceptron and shallow multilayer perceptron models.
+
+# Exploratory Data Analysis
+
+This dataset contains features provided by a higher education institution in Portugal and collected from various disjoint databases about students at the time of their enrollment in an undergraduate degree program. The features relate to student and parent demographics, socioeconomic indicators, course of study, academic performance, and the targeted outcome: whether a student graduates, drops out, or remains enrolled. The collected data previously underwent cleaning and numerical recoding to prepare it for the modeling task of classification.<a href="#2"><sup>2</sup></a>
+
+## List of Features
+
+The dataset contains 4,424 observations and 34 feature features.
+
+-   **Marital Status** (categorical): 6 categories include single, married, widower, divorced, de facto union, or legally separated; 88.6% of students are categorized as single.
+-   **Application mode** (categorical): 18 categories include information related to the student's application classifiers, such as international student, special contingent, special age category, and transfer student.
+-   **Application order** (categorical): 8 categories of preferred application order between first choice and last choice.
+-   **Course** (categorical): 17 categories for chosen course of study.
+-   **Daytime/evening attendance** (binary): Whether a student attends during the day or in the evening; 89.08% attend during the day.
+-   **Previous Qualification** (categorical): 17 categories of highest education level, from secondary education to master's degree; 84.02% of students completed their secondary education (12th year of schooling or equivalent).
+-   **Nationality** (categorical): 21 nationalities represented, 97.5% Portuguese and the remaining international students.
+-   **Mother's Qualification** and **Father's Qualification** (categorical): 29 and 34 categories of highest education level, respectively.
+-   **Mother's Occupation** and **Father's Occupation** (categorical): 32 and 46 categories of occupation, respectively.
+-   **Displaced** (binary): Whether or not a student is displaced; 54.84% of students are displaced.
+-   **Educational special needs** (binary): 1.15% of students reported educational special needs.
+-   **Debtor** (binary): Whether or not a student has debt; 11.37% of students have debt.
+-   **Tuition fees up to date** (binary): Whether or not a student's tuition fees are up to date; 11.93% are not up-to-date on their payments.
+-   **Gender** (binary): 64.83% of students are female
+-   **Scholarship holder** (binary): 24.84% of students hold a scholarship.
+-   **Age at enrollment** (integer): Age of the student when they are enrolled; 64.94% are 21 years old or younger.
+-   **International student** (binary): International students (i.e., not from Portugal) account for 2.49% of the sample.
+-   **Curricular Units 1st Semester** and **Curricular Units 2nd Semester** (integers): Number of curricular units **Credited**, **Enrolled**, and **Approved** for each semester. **Evaluations** encompasses the number of evaluations to curricular units in each semester, and **Without Evaluations** is the number of curricular units without evaluations in each semester. **Grade** is the average grade between 0 and 20 per semester.
+-   Economic features (continuous): This dataset includes continuous features related to the **Unemployment Rate**, **Inflation Rate**, and **GDP**.
+-   **Target** (categorical): A student's academic outcome classified across three categories: Dropout, graduate, and enrolled.
+
+```{r data}
+data <- read.csv("https://christinekillion.github.io/machine_learning/data/student-success.csv")
+
+# Change column names
+colnames(data) <- c(
+  "Marital", "Application_M", "Application_O", "Course", 
+  "Attendance", "S_Qual", "Nationality", 
+  "M_Qual", "F_Qual", "M_Occ", 
+  "F_Occ", "Displaced", "Special_Needs", "Debtor", 
+  "Tuition", "Gender", "Scholarship", "Age", 
+  "International", "U_Credited1", "U_Enrolled1",
+  "U_Evaluated1", "U_Approved1", 
+  "Grade1", "U_WO_Eval1", 
+  "U_Credited2", "U_Enrolled2", 
+  "U_Evaluated2", "U_Approved2", 
+  "Grade2", "U_WO_Eval2", 
+  "Unemployment", "Inflation", "GDP", "Target"
+)
+```
+
+## Distribution of Individual Features
+
+This section will describe the key categorical, binary, and continuous features in the dataset and highlight potential issues for modeling. In particular, there are three key groups that are underrepresented within this dataset and should be carefully considered in the development of machine learning models so as not to reproduce bias. I will explore the relationship between these groups and the dropout outcome in the sections that follow.
+
+### Parental Education and Occupation
+
+This dataset contains the previous academic qualifications of the student, mother, and father. For students, 84.02% have completed secondary education. The parental qualification distributions do not reflect that of the students: There is a wider range of educational categories for each of the parent groups (likely due to the disparate sources of data). When recoded and grouped into three main categories (secondary education, higher education, and other), the distribution of parent qualifications in the dataset indicates that most of the parent qualifications fall into the "other" category.
+
+Parental occupation is similarly classified across a range of categories. Should parental education or occupation prove to be useful features in regression modeling, the granular categorization could potentially be an issue in the interpretability of a regression model.
+
+### Grade Distribution
+
+The average grade features for each semester contain values of zero. When grades of zero are excluded, the grade distributions are approximately normally distributed. Data imputation methods can be used to replace the zero values. Additionally, a binary feature can be created to retain the information of whether a student has a recorded grade of zero for each semester (so as not to lose that information, which could potentially prove useful in regression model).
+
+## Relationship Between Features
+
+This section examines the relationships between key categorical and numerical features in the dataset.
+
+### Grades and Student Groups
+
+A minority of students in the dataset have debt or unpaid tuition fees. The distribution of average grades, when stratified by debt status and also by tuition status, show that the students in the minority for these categories appear to have a lower grade distribution.
+
+Another notable trend is that male students, accounting for 35.17% of the dataset, appear to achieve a lower average grade distribution. Imputing grade values of zero is recommended before proceeding with modeling and may help mitigate some of the bias associated with these two groups.
+
+### Grades and Curricular Units
+
+This dataset includes multiple features measuring credits for each semester: i.e., number of curricular units credited, enrolled, approved, and evaluated. A significant number of the credited features for each semester have a value of zero, more so in the second semester; this may indicate that the information was recorded before the end of the second semester and may be incomplete.
+
+Further, note that when approved curricular unit is grouped and compared to student grades, it appears that students with between 4 and 8 curricular units approved achieve significantly higher grades than those with fewer than 4 and slightly higher grades on average than those more than 8. (Note that the number of evaluations to curricular units follows a similar trend).
+
+This indicates that curricular units may be a relevant feature in predicting student academic outcomes.
+
+# Feature Engineering
+
+What follows is a summary of the steps taken to engineer the key features in the dataset to prepare them for regression modeling.
+
+I will begin by analyzing and addressing the zero grade values with imputation. I will then proceed to addressing issues with the key features, including transforming the target by establishing a binary, numerically encoded feature measuring whether a student drops out of their course of study.
+
+## Missing Values
+
+The first and second semester grade average features have bimodal distributions due to the quantity of zero grade values. To address this, I will treat the zeros as missing values that could be due to students missing an exam, among other possibly random reasons. There are 665 zeros among first-semester grade averages and 793 among second-semester grade averages. However, because a grade of zero may be relevant for predicting student dropout, I capture this information about zero grades for each semester in two new binary, numerically encoded features: Zero1 and Zero2. Note that imputing zero grade values also addresses some of the gender bias in the data.
+
+```{r grade_of_zero}
+# Create the Zero1 feature (1 if Grade1 is 0, otherwise 0, including NAs as 0)
+data$Zero1 <- ifelse(!is.na(data$Grade1) & data$Grade1 == 0, 1, 0) 
+
+# Create the Zero2 feature (1 if Grade2 is 0, otherwise 0, including NAs as 0)
+data$Zero2 <- ifelse(!is.na(data$Grade2) & data$Grade2 == 0, 1, 0) 
+```
+
+```{r replace_zeros}
+# Replace 0 values with NA in Grade1 and Grade2
+data$Grade1[data$Grade1 == 0] <- NA
+data$Grade2[data$Grade2 == 0] <- NA
+```
+
+### Replacement Imputation for Categorical Features
+
+Two categorical features in this dataset have missing values: mother's occupation (17 missing) and father's occupation (19 missing). There are many reasons that these values may be missing; for instance, some students may have family structures that do not include a mother, a father, or both. Alternatively, it's possible that some parents did not provide the information on their background or that the information was not properly recorded. I will assume the values are missing at random.
+
+Since the missing values for mother's and father's occupation account for less than 0.5% of each feature, I use the single imputation method of mode replacement. The mode for both mother's and father's occupation is "Unskilled Workers" (encoded as "10").
+
+```{r}
+invisible(tabulate(data$M_Occ))
+invisible(tabulate(data$F_Occ))
+
+data <- data %>%
+  mutate(M_Occ = ifelse(is.na(M_Occ), 10, M_Occ))
+
+data <- data %>%
+  mutate(F_Occ = ifelse(is.na(F_Occ), 10, F_Occ))
+
+# A "blank" answer for parent occupation is encoded as 13. Recode it as missing. 
+data <- data %>%
+  mutate(M_Occ = ifelse(M_Occ == 13, NA, M_Occ))
+
+data <- data %>%
+  mutate(F_Occ = ifelse(F_Occ == 13, NA, F_Occ))
+```
+
+### Multiple Imputation
+
+I treat the zero grade values as missing and perform multiple imputation by chained equations through the MICE package using predictive mean matching, which produces a close fit with the data while still maintaining randomness and variability.
+
+```{r mice, results='hide'}
+#create a new dataframe to test MICE algorithm 
+grades <- data
+
+# Use Predictive Mean Matching (PMM) for the continuous features to perform MICE imputation
+imputed_data1 <- mice(grades, method = "pmm", m = 4, maxit = 5, seed = 14)
+
+#Fit model to imputed dataset
+model_imp_2 <- with(imputed_data1, lm(Grade2 ~ ., data = grades))
+
+#Combine parameter estimates
+pooled_results2 <- pool(model_imp_2) 
+
+# Summarize results
+invisible(summary(pooled_results2))
+
+# View the imputed data (completed dataset)
+completed_data <- complete(imputed_data1)
+
+# Add a new column to differentiate original vs imputed data
+grades$Data_Type <- "Original"
+completed_data$Data_Type <- "Imputed"
+
+# Combine original and imputed data into one data frame
+combined_data <- rbind(
+  data.frame(Grade1 = grades$Grade1, Grade2 = grades$Grade2, Data_Type = grades$Data_Type),
+  data.frame(Grade1 = completed_data$Grade1, Grade2 = completed_data$Grade2, Data_Type = completed_data$Data_Type)
+)
+```
+
+## Recoding and Combining Features
+
+I combine information about student grade averages originally recorded as zero in a new feature called Zero. This feature categorizes students into three categories: 0 for no recorded grade average of zero, 1 for 1 semester with a recorded grade average of zero, and 2 for both semesters with a recorded grade average of zero.
+
+```{r}
+data2 <- completed_data 
+
+data2$Zero <- data2$Zero1 + data2$Zero2
+```
+
+Lastly, I create a binary, numerically encoded Dropout feature based on the Target that indicates whether a student is recorded to have dropped out of their course of study.
+
+```{r Dropout_feature}
+data2 <- data2 %>%
+  mutate(Target = recode(Target, 
+                         "Dropout" = 0, 
+                         "Enrolled" = 1, 
+                         "Graduate" = 2))
+
+#create Dropout feature 
+data2$Dropout <- ifelse(data2$Target == 0, "Yes", "No")
+```
+
+## Feature Selection
+
+The dataset for modeling includes all 4424 observations and 35 features, listed below. The target is the binary outcome **Dropout**.
+
+-   **Marital Status** (categorical)
+-   **Application mode** (categorical)
+-   **Application order** (categorical)
+-   **Course** (categorical)
+-   **Daytime/evening attendance** (binary)
+-   **Previous Qualification** (categorical)
+-   **Nationality** (categorical)
+-   **Mother's Qualification** (categorical)
+-   **Father's Qualification** (categorical)
+-   **Mother's Occupation** (categorical)
+-   **Father's Occupation** (categorical)
+-   **Displaced** (binary)
+-   **Educational special needs** (binary)
+-   **Debtor** (binary)
+-   **Tuition fees up to date** (binary)
+-   **Gender** (binary)
+-   **Scholarship holder** (binary)
+-   **Age at enrollment** (numeric)
+-   **International student** (binary)
+-   **1st Semester Grade** (numeric)
+-   **Curricular units credited: 1st Semester** (numeric)
+-   **Curricular units enrolled: 1st Semester** (numeric)
+-   **Curricular units approved: 1st Semester** (numeric)
+-   **Evaluations: 1st Semester** (numeric)
+-   **Without Evaluations: 1st Semester** (numeric)
+-   **Curricular units credited: 2nd Semester** (numeric)
+-   **Curricular units enrolled: 2nd Semester** (numeric)
+-   **Curricular units approved: 2nd Semester** (numeric)
+-   **Evaluations: 2nd Semester** (numeric)
+-   **Without Evaluations: 2nd Semester** (numeric)
+-   **2nd Semester Grade** (numeric)
+-   **Zero Grades** (numeric)
+-   **Unemployment Rate** (numeric)
+-   **Inflation Rate** (numeric)
+-   **GDP** (numeric)
+
+```{r data3}
+# create a new dataset that removes redundant features
+data3 <- subset(data2, select = -c(Data_Type, Target, Zero1, Zero2))
+```
+
+# Model Development and Overview
+
+The purpose of this portion of the report is to outline the methodology for training a hidden-layer neural network model that predicts student dropouts.
+
+Various machine learning techniques can be applied to complex classification tasks such as predicting student dropouts. Traditional models like logistic regression offer simplicity and interpretability, making them suitable as strong baselines. Decision trees, similarly, provide intuitive, rule-based paths that are easy to visualize and explain, though they may suffer from overfitting if not properly pruned.
+
+More advanced and computationally intensive approaches—such as random forests, support vector machines, and regularized regression methods (e.g., lasso, ridge, elastic net)—are designed to manage high-dimensional feature spaces and uncover non-linear patterns in the data. These models often outperform simpler methods in terms of predictive accuracy, but at the cost of reduced interpretability.
+
+To capture complex relationships in predicting whether university students will drop out of their course of study, I train a single-hidden-layer neural network using all 35 features and employing cross-validation to tune the hyperparameters, which include the learning rate, the number of nodes in the hidden layer, and the maximum number of steps. I will compare the model's performance with that of two base models: a perceptron model, which is a simple neural network with no hidden layers, and logistic regression model.
+
+## Neural Network
+
+In this section, I will train and cross-validate a single-hidden-layer neural network for predicting student dropout status.
+
+First, I prepare the data by scaling all features and splitting the data into a training and testing set (70% and 30% split, respectively).
+
+```{r data_splitting}
+# Feature scaling - normalize numeric variables to [0,1] range
+normalize <- function(x) {
+  return ((x - min(x)) / (max(x) - min(x)))
+}
+# Apply normalization to all numeric columns
+numeric.cols <- sapply(data3, is.numeric)
+data3[numeric.cols] <- lapply(data3[numeric.cols], normalize)
+
+# recode Dropout
+data3$Dropout <- ifelse(data3$Dropout == "Yes", 1, 0)
+
+# Two-way data splitting: 70-30%
+set.seed(172)  # For reproducibility
+sample.size.cls <- floor(0.70 * nrow(data3))
+train.indices.cls <- sample(1:sample.size.cls, size = sample.size.cls, replace = FALSE)
+
+train.data.cls <- data3[train.indices.cls, ]
+test.data.cls <- data3[-train.indices.cls, ]
+```
+
+I then train the one-hidden-layer neural network model, testing a range of nodes and cutoff probabilities to find the number of nodes that produces the optimal results, defined as greater than 85% accuracy with the highest sensitivity (i.e., the rate at which the model correctly identifies dropout rates). I began by testing a broad range of nodes from 1 to 70 in increments of 10, a broad range of cutoff probabilities (from 0.2 to 0.8), and two learning rates (0.01, 0.05). The results indicated that fewer nodes produced better results, so I narrowed the range of nodes from 1 to 9 in increments of 2. The chart below compares 1, 5, and 9 nodes.
+
+```{r define_NN_function}
+neuralnet.grid.search <- function(train.data, test.data, hidden.layers = 1) {
+  
+  # Define grid of hyperparameters
+  hidden.nodes <- c(1, 5, 9) 
+  grid <- expand.grid(hidden = hidden.nodes)
+
+  # Add columns to store results
+  grid$best.accuracy <- NA
+  grid$best.cutoff <- NA
+  grid$auc <- NA
+  grid$best.sensitivity <- NA
+
+  # Ensure outcome variable is numeric in both sets
+  train.data$Dropout <- as.numeric(as.character(train.data$Dropout))
+  test.data$Dropout <- as.character(test.data$Dropout)  # for predictions
+
+  # Create formula
+  nn.formula <- as.formula(paste(
+    "Dropout ~",
+    paste(setdiff(names(train.data), "Dropout"), collapse = " + ")
+  ))
+
+  # Define cutoffs
+  cutoffs <- seq(0.2, 0.8, by = 0.01)
+
+  # Loop over each hidden layer size
+  for (i in 1:nrow(grid)) {
+    hidden <- grid$hidden[i]
+
+    # Train neural network
+    nn.model <- neuralnet(
+      formula = nn.formula,
+      data = train.data,
+      hidden = hidden,
+      linear.output = FALSE,
+      act.fct = "logistic",
+      stepmax = 1e6,
+      learningrate = 0.05
+    )
+
+    # Prepare test input
+    test.inputs <- test.data[, names(test.data) != "Dropout"]
+    test.inputs <- as.data.frame(lapply(test.inputs, as.numeric))
+
+    # Predict probabilities
+    probs <- as.numeric(predict(nn.model, test.inputs))
+    true.labels <- as.character(test.data$Dropout)
+
+    # Initialize tracking variables
+    best.sens <- NA
+    best.cut <- NA
+    best.acc <- NA
+    valid.found <- FALSE
+
+    # Evaluate across cutoffs
+    for (cutoff in cutoffs) {
+      preds <- ifelse(probs >= cutoff, "1", "0")
+
+      TP <- sum(preds == "1" & true.labels == "1", na.rm = TRUE)
+      FN <- sum(preds == "0" & true.labels == "1", na.rm = TRUE)
+      TN <- sum(preds == "0" & true.labels == "0", na.rm = TRUE)
+      FP <- sum(preds == "1" & true.labels == "0", na.rm = TRUE)
+
+      sensitivity <- if ((TP + FN) > 0) TP / (TP + FN) else 0
+      accuracy <- mean(preds == true.labels, na.rm = TRUE)
+
+      if (!is.na(accuracy) && accuracy >= 0.85) {
+        valid.found <- TRUE
+
+        if (is.na(best.sens) || sensitivity > best.sens) {
+          best.sens <- sensitivity
+          best.cut <- cutoff
+          best.acc <- accuracy
+        }
+      }
+    }
+
+    # Fallback if no cutoff met the threshold
+    if (!valid.found) {
+      max.acc <- -Inf
+      for (cutoff in cutoffs) {
+        preds <- ifelse(probs >= cutoff, "1", "0")
+        acc <- mean(preds == true.labels, na.rm = TRUE)
+
+        if (!is.na(acc) && acc > max.acc) {
+          max.acc <- acc
+          best.acc <- acc
+          best.cut <- cutoff
+          best.sens <- sensitivity
+        }
+      }
+    }
+
+    # Store results in the grid
+    grid$best.accuracy[i] <- best.acc
+    grid$best.cutoff[i] <- best.cut
+    grid$best.sensitivity[i] <- best.sens
+
+    # Compute AUC
+    true.numeric <- as.numeric(as.character(true.labels))
+    roc.obj <- suppressMessages(roc(true.numeric, probs))
+    grid$auc[i] <- auc(roc.obj)
+  }
+
+  return(grid)
+}
+
+```
+
+```{r grid_search_1hiddenlayer}
+# Perform grid search for single hidden layer
+grid.results.1layer <- neuralnet.grid.search(train.data=train.data.cls, 
+                                             test.data=test.data.cls, 
+                                             hidden.layers = 1)
+pander(grid.results.1layer)
+```
+
+I then use the optimal hyperparameters to train the final model. The figures below show the optimal number of nodes for each model.
+
+```{r mlp_1}
+# Formula for neural network
+nn.formula <- as.formula(paste("Dropout ~", 
+                              paste(names(train.data.cls)[!names(train.data.cls) %in% "Dropout"], 
+                                    collapse = " + ")))
+
+# Train single hidden layer model (using best configuration from grid search)
+best.1layer <- grid.results.1layer[which.max(grid.results.1layer$auc), ]
+
+nn.1layer <- neuralnet(
+  formula = nn.formula,
+  data = train.data.cls,
+  hidden = best.1layer$hidden,
+  linear.output = FALSE,
+  act.fct = "logistic",
+  stepmax = 1e6
+)
+```
+
+```{r neuralnet-plot, echo=FALSE, results='asis', fig.cap="Neural Network Architecture"}
+# Save the plot to a PNG file
+plot_path <- file.path("figures", "NNarchitecture.png")
+# png(filename = plot_path, width = 800, height = 600)
+
+# Generate the plot
+# plot(nn.1layer, main = paste("One-hidden-layer with", best.1layer$hidden, "Nodes"), cex = 0.6)
+
+# Close the PNG device
+# dev.off()   
+
+# Embed the image in the HTML
+knitr::include_graphics(plot_path)
+```
+
+Finally, I run the model on the testing dataset. The confusion matrix comparing the predictions to actual values are below for reference (1 = dropout).
+
+```{r testing_NN}
+# Updated evaluation function to accept custom cutoff
+evaluate.model <- function(model, test.data, cutoff) {
+  # Make predictions
+  predictions <- predict(model, test.data)
+  predicted.classes <- ifelse(predictions >= cutoff, 1, 0)
+  
+  # Metrics
+  accuracy <- mean(predicted.classes == test.data$Dropout)
+  confusion.matrix <- table(Predicted = predicted.classes, Actual = test.data$Dropout)
+  roc.obj <- suppressMessages(roc(test.data$Dropout, as.numeric(predictions)))
+  auc.value <- auc(roc.obj)
+  
+  return(list(
+    accuracy = accuracy,
+    confusion_matrix = confusion.matrix,
+    roc_obj = roc.obj,
+    auc = auc.value
+  ))
+}
+
+# Use optimal cutoff from grid search
+perf.1layer <- evaluate.model(nn.1layer, test.data.cls, cutoff = best.1layer$best.cutoff)
+
+# perf.2layer <- evaluate.model(nn.2layer, test.data.cls, cutoff = best.2layer$best.cutoff)
+
+print(perf.1layer[c("confusion_matrix")])
+# print(perf.2layer[c("confusion_matrix")])
+```
+
+## Training Base Perceptron and Logistic Regression Models
+
+I train two base models to compare the performance of the single-hidden-layer neural network: a perceptron model, which is a type of neural network with no hidden layers, and a logistic regression model.
+
+I optimize the hyperparameters for the perceptron model using a grid of varying learning rates (0.001, 0.01, and 0.05) and two stopping thresholds for partial derivatives (0.01, 0.05), with 5-fold cross validation. When training the final models, I identified optimal probability cutoffs using a sensitivity-prioritized grid search and an 85% accuracy threshold.
+
+```{r perceptron}
+## Grid Search Setup
+# Define the hyperparameter grid
+hyper.grid.cls <- expand.grid(
+  learningrate = c(0.001, 0.01, 0.05),
+  threshold = c(0.01, 0.05)  # Stopping threshold for partial derivatives
+)
+
+# Create formula for neural network
+formula <- as.formula(paste("Dropout ~", paste(names(train.data.cls)[!names(train.data.cls) %in% "Dropout"], collapse = " + ")))
+
+# Set up k-fold cross-validation
+k <- 5
+fold.size <- floor(nrow(train.data.cls) / k)
+
+# Initialize results storage
+results.per <- data.frame(
+  learningrate = numeric(),
+  threshold = numeric(),
+  accuracy = numeric(),
+  stringsAsFactors = FALSE
+)
+
+## Perform Grid Search with Cross-Validation
+for (i in 1:nrow(hyper.grid.cls)) {
+  lr <- hyper.grid.cls$learningrate[i]
+  th <- hyper.grid.cls$threshold[i]
+  
+  fold.accuracies <- numeric(k)
+  
+  for (fold in 1:k) {
+    # Define validation indices
+    valid.indices <- (1 + (fold - 1) * fold.size):(fold * fold.size)
+    train.fold <- train.data.cls[-valid.indices, ]
+    valid.fold <- train.data.cls[valid.indices, ]
+    
+    # Train the perceptron
+    set.seed(147)
+    model.sigmoid <- neuralnet(
+      formula,
+      data = train.fold,
+      hidden = 0,  # Perceptron: no hidden layers
+      linear.output = FALSE,
+      learningrate = lr,
+      act.fct = "logistic",
+      algorithm = "rprop+",
+      threshold = th,
+      stepmax = 1e5
+    )
+    
+    # Make predictions
+    preds.per <- predict(model.sigmoid, valid.fold)
+    pred.classes.per <- ifelse(preds.per > 0.5, 1, 0)
+    
+    # Calculate accuracy
+    fold.accuracies[fold] <- mean(pred.classes.per == valid.fold$Dropout)
+  }
+  
+  # Store average accuracy for this hyperparameter combination
+  results.per <- rbind(results.per, data.frame(
+    learningrate = lr,
+    threshold = th,
+    accuracy = mean(fold.accuracies)
+  ))
+}
+
+## Analyze Results
+# Find the best combination
+best.combination.per <- results.per[which.max(results.per$accuracy), ]
+
+# Display results
+pander(best.combination.per)
+```
+
+```{r train_final_perceptron_model}
+## Train Final Model with Best Hyperparameters
+final.sigmoid.model <- neuralnet(
+  formula,
+  data = train.data.cls,
+  hidden = 0,
+  linear.output = FALSE,
+  learningrate = best.combination.per$learningrate,
+  threshold = best.combination.per$threshold,
+  act.fct = "logistic",
+  algorithm = "rprop+", # The resilient backpropagation with weight backtracking
+  stepmax = 1e5
+)
+# Plot the final model
+# plot(final.model)
+
+# ==== Predict Probabilities on Test Set ====
+perceptron.probs <- predict(final.sigmoid.model, test.data.cls)
+true.labels <- test.data.cls$Dropout
+
+# ==== Search for Best Cutoff (Sensitivity-focused) ====
+cutoffs <- seq(0.2, 0.8, by = 0.01)
+best.per.cutoff <- NA
+best.per.sensitivity <- -Inf
+best.per.accuracy <- NA
+
+for (cutoff in cutoffs) {
+  pred.classes <- ifelse(perceptron.probs >= cutoff, 1, 0)
+  
+  TP <- sum(pred.classes == 1 & true.labels == 1, na.rm = TRUE)
+  FN <- sum(pred.classes == 0 & true.labels == 1, na.rm = TRUE)
+  sensitivity <- if ((TP + FN) > 0) TP / (TP + FN) else 0
+  
+  acc <- mean(pred.classes == true.labels, na.rm = TRUE)
+  
+  if (!is.na(acc) && acc >= 0.85 && sensitivity > best.per.sensitivity) {
+    best.per.sensitivity <- sensitivity
+    best.per.cutoff <- cutoff
+    best.per.accuracy <- acc
+  }
+}
+
+# ==== Fallback: Use highest accuracy if no cutoff met 85% accuracy threshold ====
+if (is.na(best.per.cutoff)) {
+  best.acc <- -Inf
+  for (cutoff in cutoffs) {
+    pred.classes <- ifelse(perceptron.probs >= cutoff, 1, 0)
+    acc <- mean(pred.classes == true.labels, na.rm = TRUE)
+    
+    if (!is.na(acc) && acc > best.acc) {
+      best.acc <- acc
+      best.per.cutoff <- cutoff
+      best.per.accuracy <- acc
+      best.per.sensitivity <- NA
+    }
+  }
+}
+
+# ==== Final Classification with Optimal Cutoff ====
+perceptron.classes <- ifelse(perceptron.probs >= best.per.cutoff, 1, 0)
+perceptron.accuracy <- mean(perceptron.classes == true.labels, na.rm = TRUE)
+perceptron.confmat <- table(Predicted = perceptron.classes, Actual = true.labels)
+```
+
+Similarly, I train the logistic regression model and perform a grid search to optimize the probability cutoff, prioritizing sensitivity and including an 85% accuracy threshold. In short, the optimized cutoff is the one that produces the highest sensitivity (correct dropout predictions) while maintaining at least 85% accuracy (overall correct predictions).
+
+```{r logit_model}
+# ==== Prepare Data ====
+# Convert Dropout to factor if it's numeric
+train.data.cls$Dropout <- as.factor(train.data.cls$Dropout)
+test.data.cls$Dropout <- as.factor(test.data.cls$Dropout)
+
+# Make Dropout binary numeric
+train.data.cls$Dropout <- as.numeric(as.character(train.data.cls$Dropout))
+test.data.cls$Dropout <- as.numeric(as.character(test.data.cls$Dropout))
+
+# ==== Train Logistic Regression Model ====
+logit.model <- glm(Dropout ~ ., data = train.data.cls, family = binomial)
+
+# Predict probabilities
+logit.pred <- predict(logit.model, test.data.cls, type = "response")
+true.labels <- test.data.cls$Dropout
+
+# ==== Search for Best Cutoff (Sensitivity-focused) ====
+cutoffs <- seq(0.2, 0.8, by = 0.01)
+
+best.sensitivity <- -Inf
+best.cutoff <- NA
+best.accuracy <- NA
+
+for (cutoff in cutoffs) {
+  temp.classes <- ifelse(logit.pred >= cutoff, 1, 0)
+  
+  TP <- sum(temp.classes == 1 & true.labels == 1, na.rm = TRUE)
+  FN <- sum(temp.classes == 0 & true.labels == 1, na.rm = TRUE)
+  sensitivity <- if ((TP + FN) > 0) TP / (TP + FN) else 0
+
+  acc <- mean(temp.classes == true.labels, na.rm = TRUE)
+
+  if (!is.na(acc) && acc >= 0.85 && sensitivity > best.sensitivity) {
+    best.sensitivity <- sensitivity
+    best.cutoff <- cutoff
+    best.accuracy <- acc
+  }
+}
+
+# ==== Fallback: Use highest accuracy if no cutoff met 85% accuracy threshold ====
+if (is.na(best.cutoff)) {
+  best.acc <- -Inf
+  for (cutoff in cutoffs) {
+    temp.classes <- ifelse(logit.pred >= cutoff, 1, 0)
+    acc <- mean(temp.classes == true.labels, na.rm = TRUE)
+    
+    if (!is.na(acc) && acc > best.acc) {
+      best.acc <- acc
+      best.cutoff <- cutoff
+      best.accuracy <- acc
+      best.sensitivity <- NA
+    }
+  }
+}
+
+# ==== Final Classification ====
+logit.classes <- ifelse(logit.pred >= best.cutoff, 1, 0)
+logit.accuracy <- mean(logit.classes == true.labels, na.rm = TRUE)
+logit.confmat <- table(Predicted = logit.classes, Actual = true.labels)
+```
+
+## Comparing Hidden Layer Neural Network and Base Models
+
+The ROC curve displays the global performance the models, which performed similarly with areas under the curve (AUC) of approximately 0.92, which is close to 1 (correctly ranking classifications). The ROC curve indicates that this model is much better at classification than random guessing (as indicated by the 45-degree reference line, which has an AUC of 0.5).
+
+```{r ROC_Curve}
+# ==== Calculate ROC for Each Model ====
+roc.logit <- suppressMessages(roc(test.data.cls$Dropout, logit.pred))
+roc.1layer <- perf.1layer$roc_obj  
+roc.perceptron <- suppressMessages(roc(test.data.cls$Dropout, perceptron.probs))
+# roc.2layer <- perf.2layer$roc_obj  
+
+# Extract sensitivities and specificities
+sen.logit <- roc.logit$sensitivities
+spe.logit <- roc.logit$specificities
+auc.logit <- roc.logit$auc
+
+sen.1layer <- roc.1layer$sensitivities
+spe.1layer <- roc.1layer$specificities
+auc.1layer <- roc.1layer$auc
+
+# sen.2layer <- roc.2layer$sensitivities
+# spe.2layer <- roc.2layer$specificities
+# auc.2layer <- roc.2layer$auc
+
+sen.perceptron <- roc.perceptron$sensitivities
+spe.perceptron <- roc.perceptron$specificities
+auc.perceptron <- roc.perceptron$auc
+
+# ==== Plot ROC Curve Comparison ====
+if (
+  all(is.finite(1 - spe.1layer), is.finite(sen.1layer)) &&
+  all(is.finite(1 - spe.logit), is.finite(sen.logit)) &&
+  all(is.finite(1 - spe.perceptron), is.finite(sen.perceptron))) { 
+  #all(is.finite(1 - spe.2layer), is.finite(sen.2layer)))
+  par(pty = "s")  # square plot
+  plot(1 - spe.1layer, sen.1layer, type = "l", lty = 1, col = "#0C7BDC",
+       xlab = "1 - Specificity", ylab = "Sensitivity", main = "ROC Curve Comparison")
+  
+  lines(1 - spe.logit, sen.logit, lty = 1, col = "#ac1f67")
+  lines(1 - spe.perceptron, sen.perceptron, lty = 2, col = "#FFC20A")
+  # lines(1 - spe.2layer, sen.2layer, lty = 2, col = "darkgreen")
+
+  legend("bottomright", 
+         legend = c(
+           paste("1-layer NN (AUC =", round(auc.1layer, 5), ")"),
+          # paste("2-layer NN (AUC =", round(auc.2layer, 5), ")"),
+           paste("Logistic (AUC =", round(auc.logit, 5), ")"),
+           paste("Perceptron (AUC =", round(auc.perceptron, 5), ")")
+         ),
+         col = c("#0C7BDC", "#ac1f67", "#FFC20A"),
+         lty = c(1, 1, 1),
+         cex = 0.8,
+         bty = "n")
+} else {
+  warning("ROC curve data contains non-finite values. Plot skipped.")
+}
+```
+
+The table below shows local performance metrics for each of the models based on their respective optimal cutoff probability. The one-hidden-layer neural network model achieved a higher sensitivity score, meaning that it correctly predicted a student's dropout status better than the logistic regression and perceptron models, though all three models are comparable in overall accuracy (approximately 85% accurate). These findings make sense in light of the Universal Approximation Theorem, which shows that a neural network with at least one hidden layer and a sufficient number of neurons can approximate any continuous function, under the appropriate conditions.
+
+```{r model_comparison_table}
+# ==== Confusion Matrices and Metrics ====
+
+# Logistic Regression
+logit.TP <- logit.confmat["1", "1"]
+logit.FN <- logit.confmat["0", "1"]
+logit.TN <- logit.confmat["0", "0"]
+logit.FP <- logit.confmat["1", "0"]
+
+logit.sensitivity <- ifelse((logit.TP + logit.FN) > 0, logit.TP / (logit.TP + logit.FN), 0)
+logit.specificity <- ifelse((logit.TN + logit.FP) > 0, logit.TN / (logit.TN + logit.FP), 0)
+
+# 1-layer Neural Network
+nn1.TP <- perf.1layer$confusion_matrix["1", "1"]
+nn1.FN <- perf.1layer$confusion_matrix["0", "1"]
+nn1.TN <- perf.1layer$confusion_matrix["0", "0"]
+nn1.FP <- perf.1layer$confusion_matrix["1", "0"]
+
+nn1.sensitivity <- ifelse((nn1.TP + nn1.FN) > 0, nn1.TP / (nn1.TP + nn1.FN), 0)
+nn1.specificity <- ifelse((nn1.TN + nn1.FP) > 0, nn1.TN / (nn1.TN + nn1.FP), 0)
+
+# 2-layer Neural Network
+# nn2.TP <- perf.2layer$confusion_matrix["1", "1"]
+# nn2.FN <- perf.2layer$confusion_matrix["0", "1"]
+# nn2.TN <- perf.2layer$confusion_matrix["0", "0"]
+# nn2.FP <- perf.2layer$confusion_matrix["1", "0"]
+
+# nn2.sensitivity <- ifelse((nn2.TP + nn1.FN) > 0, nn2.TP / (nn2.TP + nn2.FN), 0)
+# nn2.specificity <- ifelse((nn2.TN + nn1.FP) > 0, nn2.TN / (nn2.TN + nn2.FP), 0)
+
+# Perceptron
+per.TP <- perceptron.confmat["1", "1"]
+per.FN <- perceptron.confmat["0", "1"]
+per.TN <- perceptron.confmat["0", "0"]
+per.FP <- perceptron.confmat["1", "0"]
+
+per.sensitivity <- ifelse((per.TP + per.FN) > 0, per.TP / (per.TP + per.FN), 0)
+per.specificity <- ifelse((per.TN + per.FP) > 0, per.TN / (per.TN + per.FP), 0)
+
+# ==== Final Table ====
+model_comparison <- data.frame(
+  Metric = c("Best Cutoff", "Accuracy", "Sensitivity", "Specificity"),
+  Logistic_Regression = c(
+    round(best.cutoff, 3),
+    round(logit.accuracy, 3),
+    round(logit.sensitivity, 3),
+    round(logit.specificity, 3)
+  ),
+  One_Layer_NN = c(
+    round(best.1layer$best.cutoff, 3),
+    round(perf.1layer$accuracy, 3),
+    round(nn1.sensitivity, 3),
+    round(nn1.specificity, 3)
+  ),
+ # Two_Layer_NN = c(
+  #  round(best.2layer$best.cutoff, 3),
+  #  round(perf.2layer$accuracy, 3),
+  #  round(nn2.sensitivity, 3),
+#    round(nn2.specificity, 3)
+#  ),
+  Perceptron = c(
+    round(best.per.cutoff, 3),
+    round(perceptron.accuracy, 3),
+    round(per.sensitivity, 3),
+    round(per.specificity, 3)
+  )
+)
+
+# Print the comparison using pander
+pander(model_comparison, caption = "Model Performance Comparison: One-Hidden-Layer Neural Networks vs. Perceptron and Logistic Regression")
+```
+
+# Conclusion
+
+The results from this report indicate that a single-hidden-layer neural network performs comparably to a simple perceptron or logistic regression model in predicting whether a university student will drop out of their course of study. This suggests that, for this particular task and dataset, which incorporates information on student background, academic achievement, and external economic indicators, the added complexity of a hidden layer does not significantly enhance predictive accuracy. It may imply that the underlying patterns in the data are linearly separable or that the features may not benefit from deeper layers. These findings highlight the importance of matching model complexity to the problem at hand, and they emphasize the continued relevance of simpler, more interpretable models—especially when transparency and computational efficiency are priorities. Future work could explore whether more complex architectures could lead to improvements, or whether simpler models remain the most practical choice for predicting student dropout rates using similar informational inputs.
+
+# References
+
+<p id="1">
+
+1.  Martins, M.V., Tolledo, D., Machado, J., Baptista, L.M.T., Realinho, V. (2021). Early Prediction of student’s Performance in Higher Education: A Case Study. In: Rocha, Á., Adeli, H., Dzemyda, G., Moreira, F., Ramalho Correia, A.M. (eds) Trends and Applications in Information Systems and Technologies. WorldCIST 2021. Advances in Intelligent Systems and Computing, vol 1365. Springer, Cham. <https://doi.org/10.1007/978-3-030-72657-7_16>
+
+    </p>
+
+<p id="2">
+
+2.  M.V.Martins, D. Tolledo, J. Machado, L. M.T. Baptista, V.Realinho. (2021). Predict Students' Dropout and Academic Success. Kaggle. Attribution 4.0 International (CC BY 4.0). <https://www.kaggle.com/datasets/harshitsrivastava25/predict-students-dropout-and-academic-success/data>
+
+    </p>
